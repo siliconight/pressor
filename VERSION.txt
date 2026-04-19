@@ -1,1 +1,1 @@
-Pressor 3.2.5
+Pressor 3.2.6

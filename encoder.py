@@ -321,6 +321,7 @@ class AudioBatchEncoder:
         strict_routing: bool = False,
         skip_lossy_inputs: bool = False,
         fail_on_lossy_inputs: bool = False,
+        progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
     ) -> List[JobResult]:
         if use_manifest:
             items = self._load_manifest(use_manifest)
@@ -330,7 +331,7 @@ class AudioBatchEncoder:
         results: List[JobResult] = []
         worker_count = self._normalize_worker_count(max_workers)
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            futures = [
+            future_to_item = {
                 executor.submit(
                     self._encode_plan_item,
                     item,
@@ -340,11 +341,18 @@ class AudioBatchEncoder:
                     compare_output_root,
                     skip_lossy_inputs,
                     fail_on_lossy_inputs,
-                )
+                ): item
                 for item in items
-            ]
-            for future in as_completed(futures):
-                results.append(future.result())
+            }
+            completed = 0
+            total = len(items)
+            for future in as_completed(future_to_item):
+                item = future_to_item[future]
+                result = future.result()
+                results.append(result)
+                completed += 1
+                if progress_callback is not None:
+                    progress_callback(completed, total, item, result)
         return sorted(results, key=lambda item: str(item.source))
 
     def prep_for_wwise(
@@ -363,6 +371,7 @@ class AudioBatchEncoder:
         strict_routing: bool = False,
         skip_lossy_inputs: bool = False,
         fail_on_lossy_inputs: bool = False,
+        progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
     ) -> List[JobResult]:
         settings = prep_settings or {}
         if use_manifest:
@@ -373,7 +382,7 @@ class AudioBatchEncoder:
         results: List[JobResult] = []
         worker_count = self._normalize_worker_count(max_workers)
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            futures = [
+            future_to_item = {
                 executor.submit(
                     self._prep_wwise_plan_item,
                     item,
@@ -383,11 +392,18 @@ class AudioBatchEncoder:
                     settings,
                     skip_lossy_inputs,
                     fail_on_lossy_inputs,
-                )
+                ): item
                 for item in items
-            ]
-            for future in as_completed(futures):
-                results.append(future.result())
+            }
+            completed = 0
+            total = len(items)
+            for future in as_completed(future_to_item):
+                item = future_to_item[future]
+                result = future.result()
+                results.append(result)
+                completed += 1
+                if progress_callback is not None:
+                    progress_callback(completed, total, item, result)
         return sorted(results, key=lambda item: str(item.source))
 
     def scan(

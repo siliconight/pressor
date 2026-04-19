@@ -14,9 +14,33 @@ from pressor.pipeline.manifest import (
     write_wwise_import_tsv,
 )
 from pressor.pipeline.review_pack import normalize_review_pack_path, validate_review_pack_relationships
+from pressor.pipeline.progress import print_progress_header, print_progress_result, print_run_summary
 from pressor.core.paths import default_output_root_for_manifest_build, normalize_path, create_run_workspace
 from pressor.core.reports import write_failure_report, build_run_records, write_jsonl_log
 from pressor.version import __version__
+
+
+def _status_from_result(result) -> tuple[str, str | None]:
+    message = (result.message or "").strip()
+    lowered = message.lower()
+    if result.success:
+        if not result.changed and "skip" in lowered:
+            return "skipped", message
+        if not result.changed and "larger" in lowered:
+            return "kept original", message
+        if not result.changed and "dry run" in lowered:
+            return "planned", message
+        if result.changed:
+            return "encoded", None
+        return "completed", message or None
+    return "failed", message or result.likely_cause or None
+
+
+def _progress_callback(index, total, item, result) -> None:
+    source_name = Path(str(item.source)).name
+    profile = getattr(item, "profile", None)
+    status, reason = _status_from_result(result)
+    print_progress_result(index, total, source_name, profile, status, reason)
 
 
 def run_encode_job(
@@ -30,6 +54,9 @@ def run_encode_job(
     wwise_file: Path,
     log_file: Path,
 ) -> int:
+    print("")
+    print("Pressor starting...")
+    print("")
     manifest_payload: dict[str, object] | None = None
     if args.skip_lossy_inputs and args.fail_on_lossy_inputs:
         raise EncoderError("Choose either --skip-lossy-inputs or --fail-on-lossy-inputs, not both.")
@@ -134,6 +161,12 @@ def run_encode_job(
         if not args.wwise_prep and not args.manifest and not args.dry_run:
             return 0
 
+    if args.manifest:
+        total_files = len(manifest_payload.get("items", [])) if manifest_payload is not None else 0
+    else:
+        total_files = len(encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)) if input_root is not None else 0
+    print_progress_header(total_files)
+
     if args.wwise_prep:
         settings = load_wwise_settings()
         if args.wwise_safe or args.wwise_prep:
@@ -153,6 +186,7 @@ def run_encode_job(
             strict_routing=args.strict_routing,
             skip_lossy_inputs=args.skip_lossy_inputs,
             fail_on_lossy_inputs=args.fail_on_lossy_inputs,
+            progress_callback=_progress_callback,
         )
     else:
         results = encoder.batch_encode(
@@ -170,6 +204,7 @@ def run_encode_job(
             strict_routing=args.strict_routing,
             skip_lossy_inputs=args.skip_lossy_inputs,
             fail_on_lossy_inputs=args.fail_on_lossy_inputs,
+            progress_callback=_progress_callback,
         )
 
     report_path = save_report(results, reports_root)
@@ -189,6 +224,16 @@ def run_encode_job(
         "dry_run": bool(args.dry_run),
     }
     jsonl_path = write_jsonl_log(build_run_records(results, run_context), reports_root / "pressor_run.jsonl")
+    succeeded = sum(1 for item in results if item.success and (item.changed or not str(item.message).lower().startswith("skipped")))
+    skipped = sum(1 for item in results if item.success and not item.changed and "skip" in str(item.message).lower())
+    failed = sum(1 for item in results if not item.success)
+    print_run_summary(
+        succeeded=succeeded,
+        skipped=skipped,
+        failed=failed,
+        output_root=str(run_root if run_root is not None else effective_output_root),
+        reports_root=str(reports_root),
+    )
     if run_root is not None:
         print(f"Run folder: {run_root}")
     print(encoder.summarize(results))

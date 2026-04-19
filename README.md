@@ -4,7 +4,7 @@ Reduce audio file size without perceptible quality loss.
 
 Pressor is a perceptual audio optimization tool designed for game development pipelines and batch processing workflows.
 
-Version: v3.2.5  
+Version: v3.2.6  
 License: MIT
 
 ---
@@ -67,6 +67,7 @@ C:\Pressor\output
 ## What Pressor Does
 
 Pressor is built to:
+- show file-by-file run status during processing
 
 - Reduce audio file size using perceptual encoding  
 - Preserve perceived audio quality  
