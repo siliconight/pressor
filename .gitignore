@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.jsonl
+*.csv
+*.tmp
+.DS_Store
+
+.venv/
+venv/
+env/
+
+logs/
+tests/_tmp/
+tmp/
+dist/
+build/
+
+C:/Pressor/
+
+# Default local workspaces
+C:/Pressor/
+$HOME/Pressor/
+~/Pressor/

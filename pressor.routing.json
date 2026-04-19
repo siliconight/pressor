@@ -1,0 +1,74 @@
+[
+  {
+    "pattern": "VO/**",
+    "profile": "dialogue"
+  },
+  {
+    "pattern": "Dialogue/**",
+    "profile": "dialogue"
+  },
+  {
+    "pattern": "Ambient/**",
+    "profile": "ambient"
+  },
+  {
+    "pattern": "Ambience/**",
+    "profile": "ambient"
+  },
+  {
+    "pattern": "Music/**",
+    "profile": "music"
+  },
+  {
+    "pattern": "BGM/**",
+    "profile": "music"
+  },
+  {
+    "pattern": "**/VO/**",
+    "profile": "dialogue"
+  },
+  {
+    "pattern": "**/Dialogue/**",
+    "profile": "dialogue"
+  },
+  {
+    "pattern": "**/Ambient/**",
+    "profile": "ambient"
+  },
+  {
+    "pattern": "**/Ambience/**",
+    "profile": "ambient"
+  },
+  {
+    "pattern": "**/Music/**",
+    "profile": "music"
+  },
+  {
+    "pattern": "**/BGM/**",
+    "profile": "music"
+  },
+  {
+    "pattern": "SFX/**",
+    "profile": "sfx"
+  },
+  {
+    "pattern": "Sfx/**",
+    "profile": "sfx"
+  },
+  {
+    "pattern": "Foley/**",
+    "profile": "sfx"
+  },
+  {
+    "pattern": "**/SFX/**",
+    "profile": "sfx"
+  },
+  {
+    "pattern": "**/Sfx/**",
+    "profile": "sfx"
+  },
+  {
+    "pattern": "**/Foley/**",
+    "profile": "sfx"
+  }
+]

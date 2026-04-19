@@ -1,0 +1,34 @@
+{
+  "dialogue": {
+    "sample_rate": 24000,
+    "channels": 1,
+    "pcm_codec": "pcm_s16le",
+    "wwise_share_set": "CS_Dialogue_Opus",
+    "wwise_object_path": "\\Actor-Mixer Hierarchy\\Default Work Unit\\Dialogue"
+  },
+  "ambient": {
+    "sample_rate": 32000,
+    "channels": 2,
+    "pcm_codec": "pcm_s16le",
+    "wwise_share_set": "CS_Ambient_Vorbis",
+    "wwise_object_path": "\\Actor-Mixer Hierarchy\\Default Work Unit\\Ambient"
+  },
+  "music": {
+    "sample_rate": 48000,
+    "channels": 2,
+    "pcm_codec": "pcm_s16le",
+    "wwise_share_set": "CS_Music_Vorbis",
+    "wwise_object_path": "\\Actor-Mixer Hierarchy\\Default Work Unit\\Music"
+  },
+  "_policy": {
+    "mode": "transparency-first",
+    "note": "Pressor must remain acoustically invisible before Wwise. Do not add normalization, loudness processing, compression, limiting, EQ, or arbitrary audio filters here."
+  },
+  "sfx": {
+    "sample_rate": 48000,
+    "channels": 2,
+    "pcm_codec": "pcm_s16le",
+    "wwise_share_set": "CS_SFX_Opus",
+    "wwise_object_path": "\\Actor-Mixer Hierarchy\\Default Work Unit\\SFX"
+  }
+}

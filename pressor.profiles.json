@@ -1,0 +1,62 @@
+{
+  "dialogue": {
+    "codec": "libopus",
+    "container": ".opus",
+    "bitrate_mono": "28k",
+    "bitrate_stereo": "40k",
+    "sample_rate": 24000,
+    "max_channels": 1,
+    "application": "voip",
+    "vbr": "on",
+    "compression_level": 10,
+    "frame_duration": 20,
+    "adaptive_bitrate_mono_min": "24k",
+    "adaptive_bitrate_mono_max": "36k",
+    "adaptive_bitrate_stereo_min": "32k",
+    "adaptive_bitrate_stereo_max": "48k"
+  },
+  "ambient": {
+    "codec": "libopus",
+    "container": ".opus",
+    "bitrate_mono": "48k",
+    "bitrate_stereo": "72k",
+    "sample_rate": 48000,
+    "max_channels": 2,
+    "application": "audio",
+    "vbr": "on",
+    "compression_level": 10,
+    "frame_duration": 20,
+    "adaptive_bitrate_mono_min": "40k",
+    "adaptive_bitrate_mono_max": "56k",
+    "adaptive_bitrate_stereo_min": "64k",
+    "adaptive_bitrate_stereo_max": "80k"
+  },
+  "music": {
+    "codec": "aac",
+    "container": ".m4a",
+    "bitrate_mono": "96k",
+    "bitrate_stereo": "160k",
+    "sample_rate": 48000,
+    "max_channels": 2,
+    "adaptive_bitrate_mono_min": "112k",
+    "adaptive_bitrate_mono_max": "144k",
+    "adaptive_bitrate_stereo_min": "160k",
+    "adaptive_bitrate_stereo_max": "224k"
+  },
+  "sfx": {
+    "codec": "libopus",
+    "container": ".opus",
+    "bitrate_mono": "56k",
+    "bitrate_stereo": "80k",
+    "sample_rate": 48000,
+    "max_channels": 2,
+    "application": "audio",
+    "vbr": "on",
+    "compression_level": 10,
+    "frame_duration": 20,
+    "adaptive_bitrate_mono_min": "48k",
+    "adaptive_bitrate_mono_max": "72k",
+    "adaptive_bitrate_stereo_min": "72k",
+    "adaptive_bitrate_stereo_max": "96k"
+  }
+}
