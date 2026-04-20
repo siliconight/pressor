@@ -3,10 +3,11 @@ from __future__ import annotations
 import json
 import math
 import struct
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
+
+from pressor.core.subprocess_utils import DEFAULT_FFMPEG_TIMEOUT, DEFAULT_FFPROBE_TIMEOUT, run_external
 
 LOSSLESS_CODECS = {"pcm_s16le", "pcm_s24le", "pcm_s32le", "flac", "alac", "ape", "wavpack"}
 LOSSY_CODECS = {"mp3", "aac", "opus", "vorbis", "libvorbis", "wmav1", "wmav2", "ac3", "eac3"}
@@ -53,7 +54,7 @@ def probe_audio_file(path: Path, ffprobe_bin: str, validate_input_file: Callable
         str(path),
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=30)
+        result = run_external(cmd, timeout=DEFAULT_FFPROBE_TIMEOUT, text=True)
     except subprocess.TimeoutExpired as exc:
         raise AudioProbeError(f'ffprobe timed out for {path}') from exc
     if result.returncode != 0:
@@ -98,7 +99,7 @@ def read_preview_window(path: Path, ffmpeg_bin: str, ffprobe_bin: str, seconds: 
         '-',
     ])
     try:
-        result = subprocess.run(cmd, capture_output=True, check=False, timeout=60)
+        result = run_external(cmd, timeout=DEFAULT_FFMPEG_TIMEOUT, text=False)
     except subprocess.TimeoutExpired as exc:
         raise AudioProbeError(f'Preview decode timed out for {path}') from exc
     if result.returncode != 0:
@@ -170,19 +171,22 @@ def is_decodable(path: Path, ffmpeg_bin: str, validate_input_file: Callable[[Pat
         '-',
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, check=False, timeout=30)
+        result = run_external(cmd, timeout=DEFAULT_FFPROBE_TIMEOUT, text=False)
     except subprocess.TimeoutExpired:
         return False
     return result.returncode == 0
 
 
+
 def assess_input_lossiness(path: Path, info: Optional[AudioInfo] = None) -> tuple[bool, str]:
     ext = path.suffix.lower()
     codec_name = (getattr(info, "codec_name", None) or "").lower()
-    if codec_name in LOSSLESS_CODECS:
-        return False, f"codec {codec_name} is lossless"
-    if codec_name in LOSSY_CODECS:
-        return True, f"codec {codec_name} is lossy"
+    if codec_name:
+        if codec_name in LOSSLESS_CODECS:
+            return False, f"codec {codec_name} is lossless"
+        if codec_name in LOSSY_CODECS:
+            return True, f"codec {codec_name} is lossy"
+        return False, f"codec {codec_name} is not classified as lossy"
     if ext in COMMONLY_LOSSY_EXTENSIONS:
         return True, f"extension {ext} commonly indicates lossy audio"
     return False, ""

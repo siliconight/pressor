@@ -60,6 +60,9 @@ def run_encode_job(
     manifest_payload: dict[str, object] | None = None
     if args.skip_lossy_inputs and args.fail_on_lossy_inputs:
         raise EncoderError("Choose either --skip-lossy-inputs or --fail-on-lossy-inputs, not both.")
+    if args.allow_lossy_inputs and (args.skip_lossy_inputs or args.fail_on_lossy_inputs):
+        args.skip_lossy_inputs = False
+        args.fail_on_lossy_inputs = False
     if args.manifest:
         manifest_payload = load_manifest_context(Path(args.manifest))
 
@@ -186,6 +189,7 @@ def run_encode_job(
             strict_routing=args.strict_routing,
             skip_lossy_inputs=args.skip_lossy_inputs,
             fail_on_lossy_inputs=args.fail_on_lossy_inputs,
+            allow_lossy_inputs=args.allow_lossy_inputs,
             progress_callback=_progress_callback,
         )
     else:
@@ -204,6 +208,7 @@ def run_encode_job(
             strict_routing=args.strict_routing,
             skip_lossy_inputs=args.skip_lossy_inputs,
             fail_on_lossy_inputs=args.fail_on_lossy_inputs,
+            allow_lossy_inputs=args.allow_lossy_inputs,
             progress_callback=_progress_callback,
         )
 

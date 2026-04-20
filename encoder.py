@@ -21,6 +21,7 @@ from pressor.core.classifier import ProfileDecision, classify_audio_preview
 from pressor.core.perceptual import PerceptualEncodeDecision, recommend_encode_plan
 from pressor.core.planner import build_encode_plan
 from pressor.core.reports import write_encode_report as core_write_encode_report, build_run_summary as core_build_run_summary
+from pressor.core.subprocess_utils import DEFAULT_FFMPEG_TIMEOUT, run_external
 from pressor.core.errors import infer_error_details
 from pressor.core.encoder import (
     CoreEncoderError,
@@ -321,6 +322,7 @@ class AudioBatchEncoder:
         strict_routing: bool = False,
         skip_lossy_inputs: bool = False,
         fail_on_lossy_inputs: bool = False,
+        allow_lossy_inputs: bool = False,
         progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
     ) -> List[JobResult]:
         if use_manifest:
@@ -341,6 +343,7 @@ class AudioBatchEncoder:
                     compare_output_root,
                     skip_lossy_inputs,
                     fail_on_lossy_inputs,
+                    allow_lossy_inputs,
                 ): item
                 for item in items
             }
@@ -371,6 +374,7 @@ class AudioBatchEncoder:
         strict_routing: bool = False,
         skip_lossy_inputs: bool = False,
         fail_on_lossy_inputs: bool = False,
+        allow_lossy_inputs: bool = False,
         progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
     ) -> List[JobResult]:
         settings = prep_settings or {}
@@ -392,6 +396,7 @@ class AudioBatchEncoder:
                     settings,
                     skip_lossy_inputs,
                     fail_on_lossy_inputs,
+                    allow_lossy_inputs,
                 ): item
                 for item in items
             }
@@ -539,6 +544,7 @@ class AudioBatchEncoder:
         compare_output_root: Optional[Path],
         skip_lossy_inputs: bool,
         fail_on_lossy_inputs: bool,
+        allow_lossy_inputs: bool,
     ) -> JobResult:
         source = Path(item.source)
         destination = Path(item.destination)
@@ -555,9 +561,9 @@ class AudioBatchEncoder:
                 return JobResult(source, destination, item.profile, True, False, original_size, destination.stat().st_size, "Skipped existing", item.profile_source, item.profile_confidence, item.profile_reasons)
             info = self.probe(source)
             input_is_lossy, input_lossy_reason = self.inspect_input_lossiness(source, info)
-            if input_is_lossy and fail_on_lossy_inputs:
+            if input_is_lossy and fail_on_lossy_inputs and not allow_lossy_inputs:
                 return self._error_result(source, None, item, original_size, f"Rejected lossy input: {input_lossy_reason}", stage="probe", input_is_lossy=True, input_lossy_reason=input_lossy_reason)
-            if input_is_lossy and skip_lossy_inputs:
+            if input_is_lossy and skip_lossy_inputs and not allow_lossy_inputs:
                 return JobResult(source, None, item.profile, True, False, original_size, original_size, f"Skipped lossy input: {input_lossy_reason}", item.profile_source, item.profile_confidence, item.profile_reasons, input_is_lossy=True, input_lossy_reason=input_lossy_reason)
             cmd, temp_output, tuning = self._build_ffmpeg_command(source, destination, info, item.profile, profile, overwrite)
             if dry_run:
@@ -565,12 +571,12 @@ class AudioBatchEncoder:
                 if compare_output_root:
                     compare_paths = self._build_compare_paths(compare_output_root, item, destination)
                     message += f" | Compare pair: {compare_paths['original']} | {compare_paths['encoded']}"
-                if input_is_lossy:
+                if input_is_lossy and not allow_lossy_inputs:
                     message += f" | Warning: lossy input detected ({input_lossy_reason})"
                 return JobResult(source, destination, item.profile, True, False, original_size, 0, message, item.profile_source, item.profile_confidence, item.profile_reasons, tuning.risk, tuning.score, tuning.bitrate, tuning.sample_rate, tuning.channels, input_is_lossy, input_lossy_reason)
 
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=3600)
+                result = run_external(cmd, timeout=DEFAULT_FFMPEG_TIMEOUT, text=True)
             except subprocess.TimeoutExpired as exc:
                 temp_output.unlink(missing_ok=True)
                 return self._error_result(source, destination, item, original_size, "ffmpeg timed out", stage="encode", perceptual_risk=tuning.risk, perceptual_score=tuning.score, applied_bitrate=tuning.bitrate, applied_sample_rate=tuning.sample_rate, applied_channels=tuning.channels, input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
@@ -585,13 +591,13 @@ class AudioBatchEncoder:
             if skip_if_larger and output_size >= original_size:
                 temp_output.unlink(missing_ok=True)
                 message = f"Skipped because output was not smaller | Perceptual tuning: {tuning.risk} risk, {tuning.bitrate}"
-                if input_is_lossy:
+                if input_is_lossy and not allow_lossy_inputs:
                     message += f" | Warning: lossy input detected ({input_lossy_reason})"
                 return JobResult(source, None, item.profile, True, False, original_size, original_size, message, item.profile_source, item.profile_confidence, item.profile_reasons, tuning.risk, tuning.score, tuning.bitrate, tuning.sample_rate, tuning.channels, input_is_lossy, input_lossy_reason)
 
             temp_output.replace(destination)
             message = f"Encoded | Perceptual tuning: {tuning.risk} risk, {tuning.bitrate}, score {tuning.score}"
-            if input_is_lossy:
+            if input_is_lossy and not allow_lossy_inputs:
                 message += f" | Warning: lossy input detected ({input_lossy_reason})"
             if compare_output_root:
                 compare_paths = self._create_compare_pair(compare_output_root, item, source, destination)
@@ -610,6 +616,7 @@ class AudioBatchEncoder:
         prep_settings: Dict[str, Dict[str, Any]],
         skip_lossy_inputs: bool,
         fail_on_lossy_inputs: bool,
+        allow_lossy_inputs: bool,
     ) -> JobResult:
         source = Path(item.source)
         destination = Path(item.destination)
@@ -625,9 +632,9 @@ class AudioBatchEncoder:
                 return JobResult(source, destination, item.profile, True, False, original_size, destination.stat().st_size, "Skipped existing", item.profile_source, item.profile_confidence, item.profile_reasons)
             info = self.probe(source)
             input_is_lossy, input_lossy_reason = self.inspect_input_lossiness(source, info)
-            if input_is_lossy and fail_on_lossy_inputs:
+            if input_is_lossy and fail_on_lossy_inputs and not allow_lossy_inputs:
                 return self._error_result(source, None, item, original_size, f"Rejected lossy input: {input_lossy_reason}", stage="probe", input_is_lossy=True, input_lossy_reason=input_lossy_reason)
-            if input_is_lossy and skip_lossy_inputs:
+            if input_is_lossy and skip_lossy_inputs and not allow_lossy_inputs:
                 return JobResult(source, None, item.profile, True, False, original_size, original_size, f"Skipped lossy input: {input_lossy_reason}", item.profile_source, item.profile_confidence, item.profile_reasons, input_is_lossy=True, input_lossy_reason=input_lossy_reason)
             settings = prep_settings.get(item.profile, {})
             cmd, temp_output = self._build_wwise_prep_command(source, destination, info, settings, overwrite)
@@ -636,11 +643,11 @@ class AudioBatchEncoder:
                 if compare_output_root:
                     compare_paths = self._build_compare_paths(compare_output_root, item, destination)
                     message += f" | Compare pair: {compare_paths['original']} | {compare_paths['encoded']}"
-                if input_is_lossy:
+                if input_is_lossy and not allow_lossy_inputs:
                     message += f" | Warning: lossy input detected ({input_lossy_reason})"
                 return JobResult(source, destination, item.profile, True, False, original_size, 0, message, item.profile_source, item.profile_confidence, item.profile_reasons, input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason)
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=3600)
+                result = run_external(cmd, timeout=DEFAULT_FFMPEG_TIMEOUT, text=True)
             except subprocess.TimeoutExpired as exc:
                 temp_output.unlink(missing_ok=True)
                 return self._error_result(source, destination, item, original_size, "ffmpeg timed out", stage="wwise_prep", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
@@ -652,7 +659,7 @@ class AudioBatchEncoder:
             output_size = temp_output.stat().st_size
             temp_output.replace(destination)
             message = "Prepared for Wwise"
-            if input_is_lossy:
+            if input_is_lossy and not allow_lossy_inputs:
                 message += f" | Warning: lossy input detected ({input_lossy_reason})"
             if compare_output_root:
                 compare_paths = self._create_compare_pair(compare_output_root, item, source, destination)

@@ -4,7 +4,7 @@ Reduce audio file size without perceptible quality loss.
 
 Pressor is a perceptual audio optimization tool designed for game development pipelines and batch processing workflows.
 
-Version: v3.2.6  
+Version: v3.3.0  
 License: MIT
 
 ---
@@ -230,3 +230,20 @@ python -m unittest discover -s tests/unit -v
 ## Maintainer
 
 Brannen Graves
+
+
+---
+
+## Security
+
+Pressor runs locally and does not transmit data externally.
+
+It processes files within the configured workspace and relies on FFmpeg and FFprobe for media inspection and encoding.
+
+For best safety:
+- use trusted, source-quality audio files
+- avoid processing untrusted media from unknown sources
+- review setup scripts before execution
+- prefer the default strict handling for lossy inputs
+
+Pressor does not require elevated privileges for normal operation and is designed to run within user-level permissions.

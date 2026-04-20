@@ -16,6 +16,7 @@ from dataclasses import asdict
 from typing import Any, Dict, List
 
 from pressor.cli.main import main as cli_main
+from pressor.core.subprocess_utils import DEFAULT_FFPROBE_TIMEOUT, run_external
 
 from encoder import ALLOWED_INPUT_EXTENSIONS, AudioBatchEncoder, EncoderError, FFmpegLocator, JobResult, ProfileStore, RouteRule, RuleStore
 from pressor.core.config import (
@@ -77,9 +78,7 @@ def make_encoder(ffmpeg_path: str | None = None, ffprobe_path: str | None = None
 
 
 def _tool_version(binary_path: str, flag: str = "-version") -> str:
-    import subprocess
-
-    result = subprocess.run([binary_path, flag], capture_output=True, text=True, check=False, timeout=15)
+    result = run_external([binary_path, flag], timeout=DEFAULT_FFPROBE_TIMEOUT, text=True)
     if result.returncode != 0:
         raise EncoderError(f"Failed to query version for {binary_path}: {result.stderr.strip()}")
     first_line = (result.stdout or result.stderr).splitlines()[0].strip()

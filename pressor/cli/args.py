@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--keep-larger", action="store_true", help="Keep encoded outputs even if they are not smaller than the source.")
     parser.add_argument("--skip-lossy-inputs", action="store_true", help="Skip files that already appear to be lossy-encoded instead of processing them again.")
     parser.add_argument("--fail-on-lossy-inputs", action="store_true", help="Fail files that already appear to be lossy-encoded instead of processing them again.")
+    parser.add_argument("--allow-lossy-inputs", action="store_true", help="Allow already lossy-encoded inputs to be processed intentionally.")
     parser.add_argument("--manifest", help="Run against an existing manifest JSON.")
     parser.add_argument("--build-manifest", help="Create a manifest JSON and exit.")
     parser.add_argument("--review-pack", help="Optional folder where original and encoded review pairs will be copied side by side.")

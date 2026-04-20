@@ -54,3 +54,8 @@ sudo apt install ffmpeg
 ```
 
 (or equivalent for your distro)
+
+
+## Security Note
+
+Use trusted, source-quality audio files when possible. Avoid processing untrusted media from unknown sources.

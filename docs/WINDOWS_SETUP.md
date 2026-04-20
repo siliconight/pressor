@@ -55,3 +55,8 @@ If not:
 C:\ffmpeg\bin
 ```
 3. Run setup again
+
+
+## Security Note
+
+Use trusted, source-quality audio files when possible. Avoid processing untrusted media from unknown sources.

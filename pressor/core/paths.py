@@ -19,10 +19,19 @@ class RunWorkspace:
     reports_root: Path
 
 
+
 def normalize_path(path: str | Path | None) -> Path | None:
     if path is None:
         return None
-    return Path(path).expanduser()
+    return Path(path).expanduser().resolve()
+
+
+def is_within(parent: Path, child: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
 
 
 def default_output_root_for_manifest_build(input_root: Path) -> Path:
@@ -108,13 +117,11 @@ def build_review_pack_path(review_pack_root: Path, relative_path: Path, suffix: 
 def validate_path_relationships(input_root: Path | None, output_root: Path | None, review_pack_root: Path | None) -> None:
     if input_root is None:
         return
+
     input_resolved = input_root.resolve()
     for label, candidate in (("Output folder", output_root), ("Review pack", review_pack_root)):
         if candidate is None:
             continue
         candidate_resolved = candidate.resolve()
-        try:
-            candidate_resolved.relative_to(input_resolved)
-        except ValueError:
-            continue
-        raise EncoderError(f"{label} must not be inside the input folder: {candidate_resolved}")
+        if is_within(input_resolved, candidate_resolved):
+            raise EncoderError(f"{label} must not be inside the input folder: {candidate_resolved}")
