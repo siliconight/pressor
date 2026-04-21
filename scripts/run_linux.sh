@@ -19,4 +19,4 @@ else
   exit 1
 fi
 
-"$PYTHON_CMD" pressor.py --auto-profile --fail-on-lossy-inputs
+"$PYTHON_CMD" pressor.py --auto-profile --fail-on-lossy-inputs --changed-only --benchmark --changed-only --benchmark

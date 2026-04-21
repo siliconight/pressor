@@ -15,8 +15,10 @@ from pressor.pipeline.manifest import (
 )
 from pressor.pipeline.review_pack import normalize_review_pack_path, validate_review_pack_relationships
 from pressor.pipeline.progress import print_progress_header, print_progress_result, print_run_summary
+from pressor.pipeline.change_detection import DEFAULT_STATE_FILENAME, filter_changed_manifest, load_state, save_state, update_state_from_manifest_results
 from pressor.core.paths import default_output_root_for_manifest_build, normalize_path, create_run_workspace
 from pressor.core.reports import write_failure_report, build_run_records, write_jsonl_log
+from pressor.tools.benchmark import print_benchmark_summary
 from pressor.version import __version__
 
 
@@ -63,6 +65,9 @@ def run_encode_job(
     if args.allow_lossy_inputs and (args.skip_lossy_inputs or args.fail_on_lossy_inputs):
         args.skip_lossy_inputs = False
         args.fail_on_lossy_inputs = False
+    if getattr(args, "wwise_mode", False):
+        print("Running in Wwise mode.")
+        args.wwise_safe = True
     if args.manifest:
         manifest_payload = load_manifest_context(Path(args.manifest))
 
@@ -164,8 +169,44 @@ def run_encode_job(
         if not args.wwise_prep and not args.manifest and not args.dry_run:
             return 0
 
-    if args.manifest:
-        total_files = len(manifest_payload.get("items", [])) if manifest_payload is not None else 0
+
+    selected_manifest_path: Path | None = Path(args.manifest) if args.manifest else None
+    selected_manifest_payload: dict[str, object] | None = manifest_payload
+    state_manifest_path = output_root / DEFAULT_STATE_FILENAME
+    mode_name = "wwise-prep" if args.wwise_prep else "encode"
+
+    if args.changed_only and not args.build_manifest:
+        base_manifest_path = reports_root / "pressor_manifest_full.json"
+        selected_manifest_path = build_manifest(
+            encoder,
+            base_manifest_path,
+            input_root,
+            effective_output_root,
+            args.profile,
+            recursive,
+            args.auto_profile,
+            args.strict_routing,
+            args.wwise_prep,
+        )
+        with selected_manifest_path.open("r", encoding="utf-8") as handle:
+            selected_manifest_payload = json.load(handle)
+        state_payload = load_state(state_manifest_path)
+        changed_manifest_payload, changed_count, unchanged_count = filter_changed_manifest(selected_manifest_payload, state_payload, mode_name)
+        changed_manifest_path = reports_root / "pressor_manifest_changed.json"
+        with changed_manifest_path.open("w", encoding="utf-8") as handle:
+            json.dump(changed_manifest_payload, handle, indent=2)
+        selected_manifest_path = changed_manifest_path
+        selected_manifest_payload = changed_manifest_payload
+        print(f"Changed assets selected: {changed_count}")
+        print(f"Unchanged assets skipped before processing: {unchanged_count}")
+        print("")
+        if changed_count == 0:
+            print("No changed assets detected. Pressor did not need to process any files.")
+            print(f"State manifest: {state_manifest_path}")
+            return 0
+
+    if selected_manifest_payload is not None:
+        total_files = len(selected_manifest_payload.get("items", []))
     else:
         total_files = len(encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)) if input_root is not None else 0
     print_progress_header(total_files)
@@ -182,7 +223,7 @@ def run_encode_job(
             overwrite=args.overwrite,
             dry_run=args.dry_run,
             max_workers=args.workers,
-            use_manifest=Path(args.manifest) if args.manifest else None,
+            use_manifest=selected_manifest_path,
             compare_output_root=review_pack_root,
             prep_settings=settings,
             auto_profile=args.auto_profile,
@@ -202,7 +243,7 @@ def run_encode_job(
             dry_run=args.dry_run,
             max_workers=args.workers,
             skip_if_larger=not args.keep_larger,
-            use_manifest=Path(args.manifest) if args.manifest else None,
+            use_manifest=selected_manifest_path,
             compare_output_root=review_pack_root,
             auto_profile=args.auto_profile,
             strict_routing=args.strict_routing,
@@ -211,6 +252,13 @@ def run_encode_job(
             allow_lossy_inputs=args.allow_lossy_inputs,
             progress_callback=_progress_callback,
         )
+
+
+    if args.changed_only and selected_manifest_payload is not None:
+        successful_sources = {str(item.source) for item in results if item.success}
+        state_payload = load_state(state_manifest_path)
+        state_payload = update_state_from_manifest_results(state_payload, selected_manifest_payload, successful_sources, mode_name)
+        save_state(state_manifest_path, state_payload)
 
     report_path = save_report(results, reports_root)
     failure_path = write_failure_report(results, reports_root / "pressor_failures.json")
@@ -223,6 +271,8 @@ def run_encode_job(
         "auto_profile": bool(args.auto_profile),
         "wwise_prep": bool(args.wwise_prep),
         "wwise_safe": bool(args.wwise_safe),
+        "wwise_mode": bool(getattr(args, "wwise_mode", False)),
+        "changed_only": bool(getattr(args, "changed_only", False)),
         "strict_routing": bool(args.strict_routing),
         "skip_lossy_inputs": bool(args.skip_lossy_inputs),
         "fail_on_lossy_inputs": bool(args.fail_on_lossy_inputs),
@@ -246,4 +296,9 @@ def run_encode_job(
     print(f"Failure report: {failure_path}")
     print(f"Structured log: {jsonl_path}")
     print(f"Log file: {log_file}")
+
+    if getattr(args, "benchmark", False):
+        benchmark_output_root = effective_output_root
+        print_benchmark_summary(input_root, benchmark_output_root)
+
     return 0 if all(item.success for item in results) else 2

@@ -27,7 +27,7 @@ Write-Host ""
 Write-Host "Starting processing..."
 Write-Host ""
 
-& $PYTHON pressor.py --auto-profile --fail-on-lossy-inputs
+& $PYTHON pressor.py --auto-profile --fail-on-lossy-inputs --changed-only --benchmark
 $EXITCODE = $LASTEXITCODE
 
 Write-Host ""

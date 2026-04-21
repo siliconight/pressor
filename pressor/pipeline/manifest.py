@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Dict
 
@@ -21,6 +22,44 @@ def load_manifest_context(manifest_path: Path) -> Dict[str, object]:
         raise EncoderError(f"Manifest must contain a JSON object: {manifest_path}")
     return payload
 
+
+
+
+def sanitize_wwise_name(relative_path: Path) -> str:
+    parts = list(relative_path.with_suffix("").parts)
+    joined = "_".join(parts)
+    cleaned = re.sub(r"[^A-Za-z0-9_]+", "_", joined)
+    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
+    return cleaned or "Unnamed"
+
+
+def _raise_on_wwise_name_collisions(items: list[Dict[str, object]]) -> None:
+    event_sources: dict[str, list[str]] = {}
+    object_sources: dict[str, list[str]] = {}
+
+    for item in items:
+        source = str(item.get("source", ""))
+        event_name = str(item.get("wwise_event", ""))
+        object_name = str(item.get("wwise_object_path", ""))
+        event_sources.setdefault(event_name, []).append(source)
+        object_sources.setdefault(object_name, []).append(source)
+
+    duplicate_events = {name: sources for name, sources in event_sources.items() if len(sources) > 1}
+    duplicate_objects = {name: sources for name, sources in object_sources.items() if len(sources) > 1}
+
+    if duplicate_events:
+        name, sources = next(iter(duplicate_events.items()))
+        raise EncoderError(
+            "Wwise manifest generation found duplicate event names: "
+            f"{name} | Sources: {', '.join(sources)}"
+        )
+
+    if duplicate_objects:
+        name, sources = next(iter(duplicate_objects.items()))
+        raise EncoderError(
+            "Wwise manifest generation found duplicate object paths: "
+            f"{name} | Sources: {', '.join(sources)}"
+        )
 
 def build_manifest(
     encoder: AudioBatchEncoder,
@@ -86,11 +125,12 @@ def build_wwise_manifest(
                 "profile_source": item.profile_source,
                 "profile_confidence": item.profile_confidence,
                 "profile_reasons": item.profile_reasons,
-                "wwise_object_path": f"{object_group}\\{relative.stem}",
-                "wwise_event": f"Play_{relative.stem}",
+                "wwise_object_path": f"{object_group}\\{sanitize_wwise_name(relative)}",
+                "wwise_event": f"Play_{sanitize_wwise_name(relative)}",
                 "wwise_share_set": share_set,
             }
         )
+    _raise_on_wwise_name_collisions(items)
     return {
         "input_root": str(input_root.resolve()),
         "output_root": str(output_root.resolve()),

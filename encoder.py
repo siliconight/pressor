@@ -32,6 +32,15 @@ from pressor.core.encoder import (
     create_compare_pair as core_create_compare_pair,
 )
 
+
+
+def _is_within(parent: Path, child: Path) -> bool:
+    try:
+        child.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
 ALLOWED_INPUT_EXTENSIONS = {
     ".wav", ".mp3", ".flac", ".ogg", ".opus", ".m4a", ".aac", ".aif", ".aiff", ".wma"
 }
@@ -463,6 +472,10 @@ class AudioBatchEncoder:
     def _load_manifest(self, manifest_path: Path) -> List[JobPlanItem]:
         with manifest_path.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
+        manifest_output_root_raw = payload.get("output_root")
+        if not isinstance(manifest_output_root_raw, str) or not manifest_output_root_raw:
+            raise EncoderError("Manifest must declare a valid output_root.")
+        manifest_output_root = Path(manifest_output_root_raw).expanduser().resolve()
         raw_items = payload.get("items", [])
         if not isinstance(raw_items, list):
             raise EncoderError("Manifest items must be an array.")
@@ -479,13 +492,18 @@ class AudioBatchEncoder:
             if str(item["profile"]) not in known_profiles:
                 raise EncoderError(f"Manifest item {index} references unknown profile: {item['profile']}")
             self._sanitize_relative_path(str(item["relative_path"]))
-            destination = Path(str(item["destination"]))
+            destination = Path(str(item["destination"])).expanduser().resolve()
             if not destination.suffix:
                 raise EncoderError(f"Manifest item {index} destination must include a file extension.")
+            if not _is_within(manifest_output_root, destination):
+                raise EncoderError(
+                    f"Manifest item {index} destination escapes the output root: {destination}"
+                )
             destination_key = str(destination).casefold()
             if destination_key in seen_destinations:
                 raise EncoderError(f"Manifest contains duplicate destination paths: {destination}")
             seen_destinations.add(destination_key)
+            item["destination"] = str(destination)
             item.setdefault("profile_source", "manifest")
             item.setdefault("profile_confidence", 100)
             item.setdefault("profile_reasons", ["loaded from manifest"])
