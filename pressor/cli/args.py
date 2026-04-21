@@ -37,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--review-pack", help="Optional folder where original and encoded review pairs will be copied side by side.")
     parser.add_argument("--benchmark", action="store_true", help="Print a measured size comparison summary after a run.")
     parser.add_argument("--changed-only", action="store_true", help="Process only assets whose source hash or selected profile has changed since the last successful run.")
-    parser.add_argument("--wwise-mode", action="store_true", help="Run in a Wwise-oriented mode that enables Wwise-safe validation and pipeline messaging.")
+    parser.add_argument("--wwise-mode", action="store_true", help="Run in a Wwise-oriented preset that enables Wwise-safe validation, import artifact generation, and CI-friendly summaries. Use --changed-only explicitly when incremental behavior is desired.")
     parser.add_argument("--wwise-prep", action="store_true", help="Prepare WAV outputs for Wwise import instead of standalone lossy outputs.")
     parser.add_argument("--wwise-safe", action="store_true", help="Enforce Wwise-safe transparency rules that reject loudness or dynamics processing before Wwise.")
     parser.add_argument("--wwise-import-json-out", help="Write a starter Wwise import JSON mapping file.")

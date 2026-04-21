@@ -4,7 +4,7 @@ Make audio smaller without changing what players hear.
 
 Pressor is a perceptual audio optimization tool designed for game developers, pipelines, and batch processing workflows.
 
-Version: v3.4.1  
+Version: v3.5.3  
 License: MIT
 
 ---
@@ -161,9 +161,21 @@ Raw Audio → Pressor → Wwise Import → SoundBank Build
 
 Pressor does not alter mix, gain structure, authoring intent, or runtime audio behavior.
 
-Use `--wwise-mode` to run with Wwise-oriented validation and messaging. This enables Wwise-safe handling while keeping Wwise as the source of truth for playback.
+Use `--wwise-mode` to run with a Wwise-oriented preset. This enables Wwise-safe handling, import artifact generation, and CI-friendly summaries while keeping Wwise as the source of truth for playback. Changed-only processing is optional and should be requested explicitly with `--changed-only`.
 
 Generated Wwise event and object names are derived from the asset's relative path so that same-stem files in different folders do not collide during automated import.
+
+Typical Wwise-oriented command:
+
+```
+python pressor.py --input ./AudioRaw --output ./AudioOut --auto-profile --wwise-mode --wwise-prep
+```
+
+Typical incremental Wwise-oriented command:
+
+```
+python pressor.py --input ./AudioRaw --output ./AudioOut --auto-profile --wwise-mode --wwise-prep --changed-only
+```
 
 ---
 
@@ -213,7 +225,7 @@ In general:
 - lossless to lossy is expected and controlled  
 - lossy to lossy is cumulative degradation  
 
-Pressor detects lossy inputs and handles them conservatively by default.
+Pressor detects lossy inputs and handles them conservatively by default. In standard runner scripts, lossy files are skipped so the rest of the batch can continue.
 
 It is strongly recommended to use Pressor on original, uncompressed audio whenever possible.
 
@@ -279,6 +291,14 @@ Run using workspace defaults:
 python pressor.py
 ```
 
+Default runner scripts process the full batch and skip lossy inputs. Incremental behavior is only enabled when you explicitly pass `--changed-only`.
+
+Skip lossy inputs while continuing the rest of the batch:
+
+```
+python pressor.py --skip-lossy-inputs
+```
+
 Run with changed-only processing and benchmark output:
 
 ```
@@ -289,6 +309,18 @@ Run in Wwise-oriented mode:
 
 ```
 python pressor.py --wwise-mode
+```
+
+Run in Wwise-oriented prep mode:
+
+```
+python pressor.py --wwise-mode --wwise-prep
+```
+
+Run in Wwise-oriented incremental mode:
+
+```
+python pressor.py --wwise-mode --changed-only
 ```
 
 Show workspace:
@@ -313,11 +345,13 @@ Each run generates structured outputs:
 - pressor_failures.json  
 - pressor_run.jsonl  
 
-Changed-only runs may also produce:
+Changed-only and Wwise-mode runs may also produce:
 
 - pressor_manifest_full.json  
 - pressor_manifest_changed.json  
 - pressor_state_manifest.json  
+- wwise_import.json  
+- wwise_import.tsv  
 
 These artifacts make pipeline decisions visible and traceable.
 

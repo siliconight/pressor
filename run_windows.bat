@@ -26,7 +26,7 @@ set EXITCODE=%ERRORLEVEL%
 echo.
 if %EXITCODE% neq 0 (
     echo Pressor run did not complete successfully.
-    echo Check the terminal output and reports in the latest run folder.
+    echo Check the terminal output and reports in the latest run folder. Lossy files may now be skipped while the rest continue.
     echo.
     pause
     exit /b %EXITCODE%

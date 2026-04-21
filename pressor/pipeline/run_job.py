@@ -45,6 +45,22 @@ def _progress_callback(index, total, item, result) -> None:
     print_progress_result(index, total, source_name, profile, status, reason)
 
 
+
+
+def _print_wwise_summary(prepared_assets: int, unchanged_assets: int, skipped_assets: int, failed_assets: int, json_path: Path | None, tsv_path: Path | None, reports_root: Path) -> None:
+    print("Wwise mode summary")
+    print("")
+    print(f"Prepared assets : {prepared_assets}")
+    print(f"Unchanged assets: {unchanged_assets}")
+    print(f"Skipped lossy   : {skipped_assets}")
+    print(f"Failed          : {failed_assets}")
+    if json_path is not None:
+        print(f"Import JSON     : {json_path}")
+    if tsv_path is not None:
+        print(f"Import TSV      : {tsv_path}")
+    print(f"Reports         : {reports_root}")
+    print("")
+
 def run_encode_job(
     args,
     encoder,
@@ -68,6 +84,10 @@ def run_encode_job(
     if getattr(args, "wwise_mode", False):
         print("Running in Wwise mode.")
         args.wwise_safe = True
+        print("Wwise preset enabled: Wwise-safe validation and import artifact generation.")
+        if not args.changed_only:
+            print("Changed-only processing is not forced in Wwise mode. Use --changed-only explicitly when you want incremental behavior.")
+        print("")
     if args.manifest:
         manifest_payload = load_manifest_context(Path(args.manifest))
 
@@ -148,27 +168,13 @@ def run_encode_job(
         print(f"Manifest written: {manifest_path}")
         return 0
 
-    if args.wwise_import_json_out or args.wwise_import_tsv_out:
-        if args.wwise_safe or args.wwise_prep:
-            validate_wwise_safe_settings(load_wwise_settings())
-        import_payload = build_wwise_manifest(
-            encoder,
-            input_root,
-            effective_output_root,
-            args.profile,
-            recursive,
-            args.auto_profile,
-            wwise_file,
-        )
-        if args.wwise_import_json_out:
-            json_path = write_wwise_import_json(import_payload, Path(args.wwise_import_json_out))
-            print(f"Wwise starter JSON written: {json_path}")
-        if args.wwise_import_tsv_out:
-            tsv_path = write_wwise_import_tsv(import_payload, Path(args.wwise_import_tsv_out))
-            print(f"Wwise starter TSV written: {tsv_path}")
-        if not args.wwise_prep and not args.manifest and not args.dry_run:
-            return 0
-
+    wwise_json_path: Path | None = None
+    wwise_tsv_path: Path | None = None
+    if getattr(args, "wwise_mode", False):
+        if not args.wwise_import_json_out:
+            args.wwise_import_json_out = str(reports_root / "wwise_import.json")
+        if not args.wwise_import_tsv_out:
+            args.wwise_import_tsv_out = str(reports_root / "wwise_import.tsv")
 
     selected_manifest_path: Path | None = Path(args.manifest) if args.manifest else None
     selected_manifest_payload: dict[str, object] | None = manifest_payload
@@ -260,6 +266,25 @@ def run_encode_job(
         state_payload = update_state_from_manifest_results(state_payload, selected_manifest_payload, successful_sources, mode_name)
         save_state(state_manifest_path, state_payload)
 
+    if args.wwise_import_json_out or args.wwise_import_tsv_out:
+        if args.wwise_safe or args.wwise_prep or getattr(args, "wwise_mode", False):
+            validate_wwise_safe_settings(load_wwise_settings())
+        import_payload = build_wwise_manifest(
+            encoder,
+            input_root,
+            effective_output_root,
+            args.profile,
+            recursive,
+            args.auto_profile,
+            wwise_file,
+        )
+        if args.wwise_import_json_out:
+            wwise_json_path = write_wwise_import_json(import_payload, Path(args.wwise_import_json_out))
+            print(f"Wwise starter JSON written: {wwise_json_path}")
+        if args.wwise_import_tsv_out:
+            wwise_tsv_path = write_wwise_import_tsv(import_payload, Path(args.wwise_import_tsv_out))
+            print(f"Wwise starter TSV written: {wwise_tsv_path}")
+
     report_path = save_report(results, reports_root)
     failure_path = write_failure_report(results, reports_root / "pressor_failures.json")
     run_context = {
@@ -300,5 +325,12 @@ def run_encode_job(
     if getattr(args, "benchmark", False):
         benchmark_output_root = effective_output_root
         print_benchmark_summary(input_root, benchmark_output_root)
+
+    if getattr(args, "wwise_mode", False):
+        prepared_assets = sum(1 for item in results if item.success and item.changed)
+        unchanged_assets = sum(1 for item in results if item.success and not item.changed and "unchanged" in str(item.message).lower())
+        skipped_assets = sum(1 for item in results if item.success and not item.changed and "skip" in str(item.message).lower())
+        failed_assets = sum(1 for item in results if not item.success)
+        _print_wwise_summary(prepared_assets, unchanged_assets, skipped_assets, failed_assets, wwise_json_path, wwise_tsv_path, reports_root)
 
     return 0 if all(item.success for item in results) else 2
