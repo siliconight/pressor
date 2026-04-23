@@ -113,7 +113,8 @@ def run_doctor(args: argparse.Namespace) -> int:
         add("ffmpeg", True, f"Found at {locator.ffmpeg}; {_tool_version(locator.ffmpeg)}")
         add("ffprobe", True, f"Found at {locator.ffprobe}; {_tool_version(locator.ffprobe)}")
     except EncoderError as exc:
-        add("ffmpeg/ffprobe", False, str(exc))
+        detail = str(exc) + " Install FFmpeg, make sure both ffmpeg and ffprobe are on PATH, then run python pressor.py --doctor. On Windows, setup.bat can help prepare the machine."
+        add("ffmpeg/ffprobe", False, detail)
 
     try:
         profiles = load_profiles_config(PROFILE_FILE)

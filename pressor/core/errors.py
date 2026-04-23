@@ -45,7 +45,7 @@ def infer_error_details(stage: str, message: str, stderr: str = '', input_is_los
             'error_code': 'P1101',
             'error_category': 'environment',
             'likely_cause': 'FFmpeg or FFprobe is not installed or not on PATH.',
-            'suggested_action': 'Install FFmpeg and confirm ffmpeg and ffprobe are available on PATH, then run --doctor.',
+            'suggested_action': 'Install FFmpeg, confirm both ffmpeg and ffprobe are available on PATH, then run python pressor.py --doctor. On Windows, setup.bat can help prepare the machine.',
             'stderr_tail': stderr_tail,
         }
     if 'permission denied' in text:

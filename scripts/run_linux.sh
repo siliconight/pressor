@@ -19,4 +19,13 @@ else
   exit 1
 fi
 
+echo "Running environment check..."
+"$PYTHON_CMD" pressor.py --doctor || {
+  echo
+  echo "Pressor is not ready to run yet."
+  echo "Fix the doctor output above, then run ./setup_linux.sh or install FFmpeg and try again."
+  echo
+  exit 1
+}
+
 "$PYTHON_CMD" pressor.py --auto-profile --skip-lossy-inputs --benchmark

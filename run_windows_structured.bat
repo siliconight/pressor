@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 echo.
 echo ==========================================
-echo Pressor Run
+echo Pressor Structured Run
 echo ==========================================
 echo.
 
@@ -68,21 +68,21 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo Starting Pressor encode run...
+echo Starting Pressor structured encode run...
 echo.
-%PYTHON% pressor.py --input "%INPUTDIR%" --output "%OUTPUTDIR%" --auto-profile --skip-lossy-inputs --benchmark
+%PYTHON% pressor.py --input "%INPUTDIR%" --output "%OUTPUTDIR%" --auto-profile --skip-lossy-inputs --structured-output --benchmark
 set "EXITCODE=%ERRORLEVEL%"
 
 echo.
 if %EXITCODE% neq 0 (
-    echo Pressor run did not complete successfully.
+    echo Pressor structured run did not complete successfully.
     echo Check the terminal output and reports in the latest run folder.
     echo.
     pause
     exit /b %EXITCODE%
 )
 
-echo Pressor run completed successfully.
+echo Pressor structured run completed successfully.
 echo Check C:\Pressor\output for the latest timestamped run folder.
 echo.
 pause
