@@ -4,7 +4,6 @@ import hashlib
 import json
 import logging
 import math
-import mimetypes
 import os
 import shutil
 import struct
@@ -43,12 +42,7 @@ def _is_within(parent: Path, child: Path) -> bool:
         return False
 
 ALLOWED_INPUT_EXTENSIONS = {
-    ".wav", ".wave", ".mp3", ".flac", ".ogg", ".oga", ".opus", ".m4a", ".aac", ".aif", ".aiff", ".wma",
-    ".caf", ".mp2", ".mka", ".ac3", ".eac3", ".wv", ".ape", ".au", ".snd"
-}
-BLOCKED_INPUT_EXTENSIONS = {
-    ".exe", ".msi", ".bat", ".cmd", ".com", ".ps1", ".sh", ".js", ".jar", ".vbs", ".scr", ".pif", ".reg",
-    ".dll", ".so", ".dylib", ".app", ".apk", ".py", ".rb", ".php", ".pl", ".cgi"
+    ".wav", ".mp3", ".flac", ".ogg", ".opus", ".m4a", ".aac", ".aif", ".aiff", ".wma"
 }
 ALLOWED_CODECS = {"libopus", "aac"}
 ALLOWED_CONTAINERS = {".opus", ".ogg", ".m4a", ".aac"}
@@ -106,16 +100,6 @@ class JobResult:
         if not self.changed:
             return 0
         return max(0, self.original_size - self.output_size)
-
-
-@dataclass
-class RejectedInputRecord:
-    source: Path
-    relative_path: str
-    reason: str
-    detail: str = ""
-    detected_mime: str = ""
-    sniffed_as_audio: bool = False
 
 
 class FFmpegLocator(CoreFFmpegLocator):
@@ -212,7 +196,6 @@ class AudioBatchEncoder:
         self.ffmpeg = ffmpeg
         self.profiles = profiles
         self.rules = rules
-        self.last_rejected_inputs: List[RejectedInputRecord] = []
 
     @staticmethod
     def _sanitize_relative_path(relative_path: str) -> Path:
@@ -273,12 +256,12 @@ class AudioBatchEncoder:
             return self.classify_path(source_path)
         return ProfileDecision(default_profile, "default", 100, ["used default profile"])
 
-    def validate_routing_expectations(self, input_root: Path, default_profile: str, recursive: bool = True, auto_profile: bool = False, sniff_input_audio: bool = True) -> List[Dict[str, Any]]:
+    def validate_routing_expectations(self, input_root: Path, default_profile: str, recursive: bool = True, auto_profile: bool = False) -> List[Dict[str, Any]]:
         input_root = input_root.resolve()
         self._validate_directory(input_root, must_exist=True)
         return validate_strict_routing(
             input_root=input_root,
-            iter_audio_files=lambda root, recursive: self._iter_audio_files(root, recursive, sniff_input_audio=sniff_input_audio),
+            iter_audio_files=self._iter_audio_files,
             sanitize_relative_path=self._sanitize_relative_path,
             choose_profile=self.choose_profile,
             default_profile=default_profile,
@@ -286,7 +269,7 @@ class AudioBatchEncoder:
             auto_profile=auto_profile,
         )
 
-    def build_plan(self, input_root: Path, output_root: Path, default_profile: str, recursive: bool = True, forced_container: Optional[str] = None, auto_profile: bool = False, strict_routing: bool = False, sniff_input_audio: bool = True) -> List[JobPlanItem]:
+    def build_plan(self, input_root: Path, output_root: Path, default_profile: str, recursive: bool = True, forced_container: Optional[str] = None, auto_profile: bool = False, strict_routing: bool = False) -> List[JobPlanItem]:
         input_root = input_root.resolve()
         output_root = output_root.resolve()
         self._validate_directory(input_root, must_exist=True)
@@ -299,7 +282,7 @@ class AudioBatchEncoder:
                 forced_container=forced_container,
                 auto_profile=auto_profile,
                 strict_routing=strict_routing,
-                iter_audio_files=lambda root, recursive: self._iter_audio_files(root, recursive, sniff_input_audio=sniff_input_audio),
+                iter_audio_files=self._iter_audio_files,
                 sanitize_relative_path=self._sanitize_relative_path,
                 choose_profile=self.choose_profile,
                 get_profile=self.profiles.get,
@@ -313,9 +296,9 @@ class AudioBatchEncoder:
                 raise EncoderError(f"No supported audio files found under {input_root}") from exc
             raise EncoderError(message) from exc
 
-    def save_manifest(self, manifest_path: Path, input_root: Path, output_root: Path, default_profile: str, recursive: bool = True, forced_container: Optional[str] = None, extra: Optional[Dict[str, Any]] = None, auto_profile: bool = False, strict_routing: bool = False, sniff_input_audio: bool = True) -> Path:
+    def save_manifest(self, manifest_path: Path, input_root: Path, output_root: Path, default_profile: str, recursive: bool = True, forced_container: Optional[str] = None, extra: Optional[Dict[str, Any]] = None, auto_profile: bool = False, strict_routing: bool = False) -> Path:
         manifest_path = manifest_path.resolve()
-        plan = self.build_plan(input_root, output_root, default_profile, recursive, forced_container=forced_container, auto_profile=auto_profile, strict_routing=strict_routing, sniff_input_audio=sniff_input_audio)
+        plan = self.build_plan(input_root, output_root, default_profile, recursive, forced_container=forced_container, auto_profile=auto_profile, strict_routing=strict_routing)
         payload: Dict[str, Any] = {
             "input_root": str(input_root.resolve()),
             "output_root": str(output_root.resolve()),
@@ -350,12 +333,11 @@ class AudioBatchEncoder:
         fail_on_lossy_inputs: bool = False,
         allow_lossy_inputs: bool = False,
         progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
-        sniff_input_audio: bool = True,
     ) -> List[JobResult]:
         if use_manifest:
             items = self._load_manifest(use_manifest)
         else:
-            items = self.build_plan(input_root, output_root, default_profile, recursive, auto_profile=auto_profile, strict_routing=strict_routing, sniff_input_audio=sniff_input_audio)
+            items = self.build_plan(input_root, output_root, default_profile, recursive, auto_profile=auto_profile, strict_routing=strict_routing)
 
         results: List[JobResult] = []
         worker_count = self._normalize_worker_count(max_workers)
@@ -403,13 +385,12 @@ class AudioBatchEncoder:
         fail_on_lossy_inputs: bool = False,
         allow_lossy_inputs: bool = False,
         progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
-        sniff_input_audio: bool = True,
     ) -> List[JobResult]:
         settings = prep_settings or {}
         if use_manifest:
             items = self._load_manifest(use_manifest)
         else:
-            items = self.build_plan(input_root, output_root, default_profile, recursive, forced_container=".wav", auto_profile=auto_profile, strict_routing=strict_routing, sniff_input_audio=sniff_input_audio)
+            items = self.build_plan(input_root, output_root, default_profile, recursive, forced_container=".wav", auto_profile=auto_profile, strict_routing=strict_routing)
 
         results: List[JobResult] = []
         worker_count = self._normalize_worker_count(max_workers)
@@ -445,12 +426,11 @@ class AudioBatchEncoder:
         default_profile: str,
         recursive: bool = True,
         auto_profile: bool = False,
-        sniff_input_audio: bool = True,
     ) -> List[Dict[str, Any]]:
         input_root = input_root.resolve()
         self._validate_directory(input_root, must_exist=True)
         items: List[Dict[str, Any]] = []
-        for source in self._iter_audio_files(input_root, recursive, sniff_input_audio=sniff_input_audio):
+        for source in self._iter_audio_files(input_root, recursive):
             rel_path = source.resolve().relative_to(input_root)
             info = self.probe(source)
             decision = self.choose_profile(rel_path, default_profile, source_path=source, auto_profile=auto_profile)
@@ -532,17 +512,11 @@ class AudioBatchEncoder:
             raise EncoderError("Manifest did not contain any items.")
         return items
 
-    def _iter_audio_files(self, root: Path, recursive: bool, sniff_input_audio: bool = True) -> Iterable[Path]:
-        self.last_rejected_inputs = []
+    def _iter_audio_files(self, root: Path, recursive: bool) -> Iterable[Path]:
         walker = root.rglob("*") if recursive else root.glob("*")
         for path in walker:
-            if not path.is_file():
-                continue
-            accepted, rejected = self._classify_input_candidate(path, root, sniff_input_audio=sniff_input_audio)
-            if accepted:
+            if path.is_file() and path.suffix.lower() in ALLOWED_INPUT_EXTENSIONS:
                 yield path
-            elif rejected is not None:
-                self.last_rejected_inputs.append(rejected)
 
     @staticmethod
     def _command_text(command: Optional[List[str]]) -> str:
@@ -740,30 +714,12 @@ class AudioBatchEncoder:
     def summarize(results: List[JobResult]) -> str:
         return core_build_run_summary(results)
 
-    def _classify_input_candidate(self, path: Path, input_root: Path, sniff_input_audio: bool = True) -> tuple[bool, RejectedInputRecord | None]:
-        ext = path.suffix.lower()
-        relative_path = path.resolve().relative_to(input_root.resolve()).as_posix()
-        guessed_mime, _ = mimetypes.guess_type(str(path))
-        if ext in BLOCKED_INPUT_EXTENSIONS:
-            return False, RejectedInputRecord(path, relative_path, "blocked_extension", f"blocked extension {ext}", guessed_mime or "", False)
-        if ext in ALLOWED_INPUT_EXTENSIONS:
-            return True, None
-        if not sniff_input_audio:
-            return False, RejectedInputRecord(path, relative_path, "unsupported_extension", f"extension {ext or '<none>'} is not on the supported list", guessed_mime or "", False)
-        try:
-            info = probe_audio_file(path, self.ffmpeg.ffprobe, None)
-        except AudioProbeError:
-            return False, RejectedInputRecord(path, relative_path, "not_audio", f"ffprobe could not confirm an audio stream for extension {ext or '<none>'}", guessed_mime or "", False)
-        detail = f"accepted via ffprobe sniffing ({info.codec_name or 'unknown codec'})"
-        return True, None
-
     @staticmethod
     def _validate_input_file(path: Path) -> None:
         if not path.exists() or not path.is_file():
             raise EncoderError(f"Input file not found: {path}")
-        ext = path.suffix.lower()
-        if ext in BLOCKED_INPUT_EXTENSIONS:
-            raise EncoderError(f"Blocked input type: {ext}")
+        if path.suffix.lower() not in ALLOWED_INPUT_EXTENSIONS:
+            raise EncoderError(f"Unsupported input type: {path.suffix}")
 
     @staticmethod
     def _validate_directory(path: Path, must_exist: bool) -> None:

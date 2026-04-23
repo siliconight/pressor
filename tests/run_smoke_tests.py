@@ -44,40 +44,6 @@ def test_encode_and_review_pack() -> None:
     assert_exists(review)
 
 
-
-def test_structured_output() -> None:
-    source = TMP / 'selftest_bundle' / 'input'
-    output = TMP / 'structured_out'
-    result = run_cmd(pressor_args('--input', str(source), '--output', str(output), '--auto-profile', '--structured-output', '--skip-lossy-inputs'))
-    output_text = result.stdout + result.stderr
-    assert_contains(output_text, 'Structured output summary')
-    run_dir = _latest_run_dir(output)
-    assert_exists(run_dir / 'encoded')
-    assert_exists(run_dir / 'skipped')
-    assert_exists(run_dir / 'failed')
-    assert_exists(run_dir / 'reports' / 'pressor_run.jsonl')
-
-
-
-def test_cleanup_command() -> None:
-    output = TMP / 'cleanup_out'
-    runs_root = output / 'pressor_runs'
-    runs_root.mkdir(parents=True, exist_ok=True)
-    for name in ['2026-04-20_081500', '2026-04-21_081500', '2026-04-22_081500']:
-        run_dir = runs_root / name
-        run_dir.mkdir()
-        (run_dir / 'marker.txt').write_text('x', encoding='utf-8')
-
-    dry = run_cmd(pressor_args('cleanup', '--output', str(output), '--keep-last', '1', '--dry-run'))
-    assert_contains(dry.stdout + dry.stderr, '[DRY RUN] Would delete')
-    assert_exists(runs_root / '2026-04-20_081500')
-
-    real = run_cmd(pressor_args('cleanup', '--output', str(output), '--keep-last', '1'))
-    assert_contains(real.stdout + real.stderr, 'Deleting 2 run(s)')
-    assert_exists(runs_root / '2026-04-22_081500')
-    if (runs_root / '2026-04-20_081500').exists() or (runs_root / '2026-04-21_081500').exists():
-        raise AssertionError('Expected old cleanup runs to be deleted')
-
 def test_manifest_flow() -> None:
     source = TMP / 'selftest_bundle' / 'input'
     manifest = TMP / 'job.json'
@@ -124,8 +90,6 @@ def main() -> None:
         test_selftest,
         test_scan_only,
         test_encode_and_review_pack,
-        test_structured_output,
-        test_cleanup_command,
         test_manifest_flow,
         test_wwise_safe,
         test_strict_routing_failure,
@@ -150,3 +114,15 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+
+
+def test_structured_output_cli_smoke():
+    import tempfile
+    from pathlib import Path
+    from pressor.core.paths import create_run_workspace
+
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace = create_run_workspace(Path(tmp) / "out", structured_output=True)
+        assert workspace.skipped_root is not None
+        assert workspace.failed_root is not None

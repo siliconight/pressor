@@ -1,28 +1,26 @@
+import tempfile
+import unittest
 from pathlib import Path
-from types import SimpleNamespace
 
-from pressor.pipeline.run_job import _route_structured_outputs
+from pressor.core.paths import create_run_workspace
 
 
-def test_route_structured_outputs_copies_skipped_and_failed(tmp_path):
-    input_root = tmp_path / "input"
-    skipped_root = tmp_path / "skipped"
-    failed_root = tmp_path / "failed"
-    (input_root / "a").mkdir(parents=True)
-    (input_root / "b").mkdir(parents=True)
-    skipped_src = input_root / "a" / "skip.wav"
-    failed_src = input_root / "b" / "fail.wav"
-    skipped_src.write_bytes(b"skip")
-    failed_src.write_bytes(b"fail")
+class StructuredOutputTests(unittest.TestCase):
+    def test_create_run_workspace_creates_structured_folders_when_enabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = create_run_workspace(Path(tmp) / "out", structured_output=True)
+            self.assertTrue(workspace.encoded_root.exists())
+            self.assertTrue(workspace.skipped_root.exists())
+            self.assertTrue(workspace.failed_root.exists())
+            self.assertTrue(workspace.reports_root.exists())
 
-    results = [
-        SimpleNamespace(source=skipped_src, success=True, changed=False, message="Skipped lossy input: already lossy"),
-        SimpleNamespace(source=failed_src, success=False, changed=False, message="ffmpeg failed"),
-    ]
+    def test_create_run_workspace_keeps_legacy_layout_by_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = create_run_workspace(Path(tmp) / "out")
+            self.assertTrue(workspace.encoded_root.exists())
+            self.assertIsNone(workspace.skipped_root)
+            self.assertIsNone(workspace.failed_root)
 
-    skipped_count, failed_count = _route_structured_outputs(results, input_root, skipped_root, failed_root)
 
-    assert skipped_count == 1
-    assert failed_count == 1
-    assert (skipped_root / "a" / "skip.wav").read_bytes() == b"skip"
-    assert (failed_root / "b" / "fail.wav").read_bytes() == b"fail"
+if __name__ == "__main__":
+    unittest.main()

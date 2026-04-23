@@ -4,7 +4,7 @@ from pressor.version import __version__
 import argparse
 
 
-def _build_main_parser() -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Pressor: batch perceptual audio encoder for game assets with content-aware perceptual tuning.")
     parser.add_argument("--gui", action="store_true", help="Launch the desktop UI.")
     parser.add_argument("--version", action="version", version=f"Pressor {__version__}")
@@ -21,8 +21,7 @@ def _build_main_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", help="Output root for encoded runs. Pressor creates a timestamped run folder by default.")
     parser.add_argument("--run-label", help="Optional label appended to the timestamped run folder name.")
     parser.add_argument("--flat-output", action="store_true", help="Write directly into the selected output folder instead of creating a timestamped run folder.")
-    parser.add_argument("--structured-output", action="store_true", help="Organize outputs into encoded/, skipped/, failed/, and rejected/ folders inside the run workspace.")
-    parser.add_argument("--no-input-sniffing", action="store_true", help="Disable ffprobe-based input sniffing for unknown file extensions. By default, Pressor will probe unknown files and accept them only if they contain audio.")
+    parser.add_argument("--structured-output", action="store_true", help="Organize outputs into encoded/, skipped/, and failed/ folders inside the run workspace.")
     parser.add_argument("--profile", default="dialogue", help="Default fallback profile name.")
     parser.add_argument("--auto-profile", action="store_true", help="Use preview scanning to classify files when no routing rule matches.")
     parser.add_argument("--strict-routing", action="store_true", help="Fail if any source file does not match a routing rule before encoding.")
@@ -49,29 +48,5 @@ def _build_main_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _build_cleanup_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Clean up old Pressor run folders.")
-    parser.add_argument("cleanup", nargs="?", default="cleanup")
-    parser.add_argument("--output", required=True, help="Output root that contains the pressor_runs folder.")
-    parser.add_argument("--keep-last", type=int, help="Keep only the newest N run folders.")
-    parser.add_argument("--older-than-days", type=int, help="Delete run folders older than this many days.")
-    parser.add_argument("--dry-run", action="store_true", help="Print what would be deleted without deleting anything.")
-    parser.add_argument("--verbose", action="store_true", help="Print each deleted run folder.")
-    return parser
-
-
-def build_parser() -> argparse.ArgumentParser:
-    return _build_main_parser()
-
-
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    if argv is None:
-        import sys
-        argv = sys.argv[1:]
-    if argv and len(argv) > 0 and argv[0] == "cleanup":
-        args = _build_cleanup_parser().parse_args(argv)
-        args.command = "cleanup"
-        return args
-    args = build_parser().parse_args(argv)
-    args.command = None
-    return args
+    return build_parser().parse_args(argv)

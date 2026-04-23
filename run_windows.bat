@@ -13,14 +13,23 @@ echo.
 echo Progress will be shown below.
 echo.
 
-if not exist "scripts\run_windows.ps1" (
-    echo ERROR: scripts\run_windows.ps1 was not found.
-    echo.
-    pause
-    exit /b 1
+where python >nul 2>nul
+if %errorlevel%==0 (
+    set "PYTHON=python"
+) else (
+    where py >nul 2>nul
+    if %errorlevel%==0 (
+        set "PYTHON=py"
+    ) else (
+        echo ERROR: Python was not found on PATH.
+        echo Run setup.bat first, or install Python and try again.
+        echo.
+        pause
+        exit /b 1
+    )
 )
 
-powershell -ExecutionPolicy Bypass -File "%~dp0scripts\run_windows.ps1"
+%PYTHON% pressor.py --auto-profile --skip-lossy-inputs --benchmark
 set EXITCODE=%ERRORLEVEL%
 
 echo.
