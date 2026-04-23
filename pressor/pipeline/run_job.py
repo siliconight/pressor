@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
 import platform
@@ -17,7 +18,7 @@ from pressor.pipeline.review_pack import normalize_review_pack_path, validate_re
 from pressor.pipeline.progress import print_progress_header, print_progress_result, print_run_summary
 from pressor.pipeline.change_detection import DEFAULT_STATE_FILENAME, filter_changed_manifest, load_state, save_state, update_state_from_manifest_results
 from pressor.core.paths import default_output_root_for_manifest_build, normalize_path, create_run_workspace
-from pressor.core.reports import write_failure_report, build_run_records, write_jsonl_log
+from pressor.core.reports import write_failure_report, build_run_records, write_jsonl_log, write_rejected_report
 from pressor.tools.benchmark import print_benchmark_summary
 from pressor.version import __version__
 
@@ -46,6 +47,53 @@ def _progress_callback(index, total, item, result) -> None:
 
 
 
+
+
+
+def _copy_result_source(source: Path, destination_root: Path | None, input_root: Path) -> Path | None:
+    if destination_root is None:
+        return None
+    try:
+        relative_path = source.resolve().relative_to(input_root.resolve())
+    except ValueError:
+        relative_path = source.name
+    destination_path = destination_root / relative_path
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination_path)
+    return destination_path
+
+
+def _route_structured_outputs(results, input_root: Path, skipped_root: Path | None, failed_root: Path | None) -> tuple[int, int]:
+    skipped_count = 0
+    failed_count = 0
+    for item in results:
+        message = str(getattr(item, "message", "") or "").lower()
+        source = getattr(item, "source", None)
+        if source is None:
+            continue
+        source_path = Path(source)
+        if getattr(item, "success", False) and not getattr(item, "changed", False) and "skip" in message:
+            copied = _copy_result_source(source_path, skipped_root, input_root)
+            if copied is not None:
+                skipped_count += 1
+        elif not getattr(item, "success", False):
+            copied = _copy_result_source(source_path, failed_root, input_root)
+            if copied is not None:
+                failed_count += 1
+    return skipped_count, failed_count
+
+
+
+def _route_rejected_inputs(rejected_inputs, input_root: Path, rejected_root: Path | None) -> int:
+    rejected_count = 0
+    for item in rejected_inputs:
+        source = getattr(item, "source", None)
+        if source is None:
+            continue
+        copied = _copy_result_source(Path(source), rejected_root, input_root)
+        if copied is not None:
+            rejected_count += 1
+    return rejected_count
 
 def _print_wwise_summary(prepared_assets: int, unchanged_assets: int, skipped_assets: int, failed_assets: int, json_path: Path | None, tsv_path: Path | None, reports_root: Path) -> None:
     print("Wwise mode summary")
@@ -107,12 +155,12 @@ def run_encode_job(
         raise EncoderError("Input folder is required unless it is provided by --manifest.")
 
     if args.scan_only:
-        scan_results = encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)
+        scan_results = encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile, sniff_input_audio=not bool(getattr(args, "no_input_sniffing", False)))
         if args.scan_report:
             report_path = save_scan_report(scan_results, Path(args.scan_report))
             print(f"Scan report written: {report_path}")
         if args.strict_routing:
-            issues = encoder.validate_routing_expectations(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)
+            issues = encoder.validate_routing_expectations(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile, sniff_input_audio=not bool(getattr(args, "no_input_sniffing", False)))
             if issues:
                 strict_report = Path(args.scan_report).with_name("pressor_strict_routing_report.csv") if args.scan_report else input_root / "pressor_strict_routing_report.csv"
                 strict_path = save_strict_routing_report(issues, strict_report)
@@ -137,17 +185,29 @@ def run_encode_job(
     reports_root = output_root
     run_root: Path | None = None
     if not args.build_manifest and not args.manifest:
-        workspace = create_run_workspace(output_root, getattr(args, "run_label", None), flat_output=bool(getattr(args, "flat_output", False)))
+        workspace = create_run_workspace(
+            output_root,
+            getattr(args, "run_label", None),
+            flat_output=bool(getattr(args, "flat_output", False)),
+            structured_output=bool(getattr(args, "structured_output", False)),
+        )
         run_root = workspace.run_root
         effective_output_root = workspace.encoded_root
         reports_root = workspace.reports_root
         if review_pack_root is None:
             review_pack_root = workspace.review_root
+        skipped_root = getattr(workspace, "skipped_root", None)
+        failed_root = getattr(workspace, "failed_root", None)
+        rejected_root = getattr(workspace, "rejected_root", None)
+    else:
+        skipped_root = None
+        failed_root = None
+        rejected_root = None
 
     validate_review_pack_relationships(input_root, effective_output_root, review_pack_root)
 
     if args.strict_routing and not args.manifest:
-        issues = encoder.validate_routing_expectations(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)
+        issues = encoder.validate_routing_expectations(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile, sniff_input_audio=not bool(getattr(args, "no_input_sniffing", False)))
         if issues:
             strict_report = reports_root / "pressor_strict_routing_report.csv"
             strict_path = save_strict_routing_report(issues, strict_report)
@@ -214,7 +274,7 @@ def run_encode_job(
     if selected_manifest_payload is not None:
         total_files = len(selected_manifest_payload.get("items", []))
     else:
-        total_files = len(encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)) if input_root is not None else 0
+        total_files = len(encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile, sniff_input_audio=not bool(getattr(args, "no_input_sniffing", False)))) if input_root is not None else 0
     print_progress_header(total_files)
 
     if args.wwise_prep:
@@ -238,6 +298,7 @@ def run_encode_job(
             fail_on_lossy_inputs=args.fail_on_lossy_inputs,
             allow_lossy_inputs=args.allow_lossy_inputs,
             progress_callback=_progress_callback,
+            sniff_input_audio=not bool(getattr(args, "no_input_sniffing", False)),
         )
     else:
         results = encoder.batch_encode(
@@ -257,8 +318,17 @@ def run_encode_job(
             fail_on_lossy_inputs=args.fail_on_lossy_inputs,
             allow_lossy_inputs=args.allow_lossy_inputs,
             progress_callback=_progress_callback,
+            sniff_input_audio=not bool(getattr(args, "no_input_sniffing", False)),
         )
 
+
+    rejected_inputs = list(getattr(encoder, "last_rejected_inputs", []) or [])
+    structured_skipped = 0
+    structured_failed = 0
+    structured_rejected = 0
+    if bool(getattr(args, "structured_output", False)) and input_root is not None:
+        structured_skipped, structured_failed = _route_structured_outputs(results, input_root, skipped_root, failed_root)
+        structured_rejected = _route_rejected_inputs(rejected_inputs, input_root, rejected_root)
 
     if args.changed_only and selected_manifest_payload is not None:
         successful_sources = {str(item.source) for item in results if item.success}
@@ -287,6 +357,18 @@ def run_encode_job(
 
     report_path = save_report(results, reports_root)
     failure_path = write_failure_report(results, reports_root / "pressor_failures.json")
+    rejected_payload = [
+        {
+            "source": str(item.source),
+            "relative_path": item.relative_path,
+            "reason": item.reason,
+            "detail": item.detail,
+            "detected_mime": item.detected_mime,
+            "sniffed_as_audio": item.sniffed_as_audio,
+        }
+        for item in rejected_inputs
+    ]
+    rejected_path = write_rejected_report(rejected_payload, reports_root / "pressor_rejected_inputs.json")
     run_context = {
         "pressor_version": __version__,
         "platform": platform.platform(),
@@ -302,8 +384,17 @@ def run_encode_job(
         "skip_lossy_inputs": bool(args.skip_lossy_inputs),
         "fail_on_lossy_inputs": bool(args.fail_on_lossy_inputs),
         "dry_run": bool(args.dry_run),
+        "input_sniffing": not bool(getattr(args, "no_input_sniffing", False)),
     }
-    jsonl_path = write_jsonl_log(build_run_records(results, run_context), reports_root / "pressor_run.jsonl")
+    run_records = build_run_records(results, run_context)
+    for item in rejected_payload:
+        run_records.append({
+            **item,
+            "status": "rejected",
+            "timestamp": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+            "run_context": dict(run_context),
+        })
+    jsonl_path = write_jsonl_log(run_records, reports_root / "pressor_run.jsonl")
     succeeded = sum(1 for item in results if item.success and (item.changed or not str(item.message).lower().startswith("skipped")))
     skipped = sum(1 for item in results if item.success and not item.changed and "skip" in str(item.message).lower())
     failed = sum(1 for item in results if not item.success)
@@ -319,8 +410,28 @@ def run_encode_job(
     print(encoder.summarize(results))
     print(f"CSV report: {report_path}")
     print(f"Failure report: {failure_path}")
+    print(f"Rejected input report: {rejected_path}")
     print(f"Structured log: {jsonl_path}")
     print(f"Log file: {log_file}")
+
+    if bool(getattr(args, "structured_output", False)):
+        print("")
+        print("Structured output summary")
+        print("")
+        print(f"Encoded : {succeeded}")
+        print(f"Skipped : {structured_skipped}")
+        print(f"Failed   : {structured_failed}")
+        print(f"Rejected : {structured_rejected}")
+        print("")
+        print("Output structure:")
+        print("- encoded/ : processed files")
+        print("- skipped/ : passed-through inputs")
+        print("- failed/   : files requiring attention")
+        print("- rejected/ : blocked or unsupported inputs")
+    elif skipped > 0:
+        print("")
+        print("Skipped files were not copied to the output directory.")
+        print("Use --structured-output to include skipped and failed files in the output.")
 
     if getattr(args, "benchmark", False):
         benchmark_output_root = effective_output_root

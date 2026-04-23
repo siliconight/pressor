@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Type
 
 from pressor.cli.args import parse_args
+from pressor.cleanup.cleanup import run_cleanup
 from pressor.core.paths import find_supported_audio_files
 from pressor.core.workspace import (
     default_workspace_root,
@@ -32,6 +33,9 @@ def _prompt_workspace_root() -> str | None:
 
 
 def _apply_workspace_defaults(args: Namespace) -> int | None:
+    if getattr(args, "command", None) == "cleanup":
+        return None
+
     if args.show_workspace:
         cfg = load_workspace_config()
         if not cfg:
@@ -99,6 +103,8 @@ def dispatch_args(
         workspace_result = _apply_workspace_defaults(args)
         if workspace_result is not None:
             return workspace_result
+        if getattr(args, "command", None) == "cleanup":
+            return run_cleanup(args)
         if args.selftest:
             return run_selftest(args)
         if args.doctor:

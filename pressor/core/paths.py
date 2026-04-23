@@ -17,6 +17,9 @@ class RunWorkspace:
     encoded_root: Path
     review_root: Path
     reports_root: Path
+    skipped_root: Path | None = None
+    failed_root: Path | None = None
+    rejected_root: Path | None = None
 
 
 
@@ -47,10 +50,19 @@ def sanitize_run_label(label: str | None) -> str:
     return cleaned[:80]
 
 
-def create_run_workspace(output_root: Path, run_label: str | None = None, flat_output: bool = False) -> RunWorkspace:
+def create_run_workspace(output_root: Path, run_label: str | None = None, flat_output: bool = False, structured_output: bool = False) -> RunWorkspace:
     output_root = output_root.resolve()
     if flat_output:
         output_root.mkdir(parents=True, exist_ok=True)
+        skipped_root = output_root / "skipped" if structured_output else None
+        failed_root = output_root / "failed" if structured_output else None
+        rejected_root = output_root / "rejected" if structured_output else None
+        if skipped_root is not None:
+            skipped_root.mkdir(parents=True, exist_ok=True)
+        if failed_root is not None:
+            failed_root.mkdir(parents=True, exist_ok=True)
+        if rejected_root is not None:
+            rejected_root.mkdir(parents=True, exist_ok=True)
         return RunWorkspace(
             run_id="flat",
             run_label=sanitize_run_label(run_label),
@@ -58,6 +70,9 @@ def create_run_workspace(output_root: Path, run_label: str | None = None, flat_o
             encoded_root=output_root,
             review_root=output_root / "review",
             reports_root=output_root / "reports",
+            skipped_root=skipped_root,
+            failed_root=failed_root,
+            rejected_root=rejected_root,
         )
 
     output_root.mkdir(parents=True, exist_ok=True)
@@ -72,8 +87,17 @@ def create_run_workspace(output_root: Path, run_label: str | None = None, flat_o
     encoded_root = run_root / "encoded"
     review_root = run_root / "review"
     reports_root = run_root / "reports"
+    skipped_root = run_root / "skipped" if structured_output else None
+    failed_root = run_root / "failed" if structured_output else None
+    rejected_root = run_root / "rejected" if structured_output else None
     encoded_root.mkdir(parents=True, exist_ok=True)
     reports_root.mkdir(parents=True, exist_ok=True)
+    if skipped_root is not None:
+        skipped_root.mkdir(parents=True, exist_ok=True)
+    if failed_root is not None:
+        failed_root.mkdir(parents=True, exist_ok=True)
+    if rejected_root is not None:
+        rejected_root.mkdir(parents=True, exist_ok=True)
     return RunWorkspace(
         run_id=run_root.name,
         run_label=cleaned_label,
@@ -81,6 +105,9 @@ def create_run_workspace(output_root: Path, run_label: str | None = None, flat_o
         encoded_root=encoded_root,
         review_root=review_root,
         reports_root=reports_root,
+        skipped_root=skipped_root,
+        failed_root=failed_root,
+        rejected_root=rejected_root,
     )
 
 

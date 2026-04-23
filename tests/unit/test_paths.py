@@ -28,6 +28,14 @@ class PathsTests(unittest.TestCase):
             self.assertIn('music-pass', workspace.run_root.name)
             self.assertEqual(workspace.review_root.parent, workspace.run_root)
 
+    def test_create_run_workspace_creates_structured_folders_when_enabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'out'
+            workspace = create_run_workspace(root, structured_output=True)
+            self.assertTrue(workspace.encoded_root.exists())
+            self.assertTrue(workspace.skipped_root.exists())
+            self.assertTrue(workspace.failed_root.exists())
+
     def test_validate_path_relationships_rejects_nested_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

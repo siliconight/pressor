@@ -126,6 +126,14 @@ def write_failure_report(results: List[object], output_path: Path) -> Path:
     return output_path
 
 
+
+
+def write_rejected_report(rejected_inputs: List[Dict[str, Any]], output_path: Path) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open('w', encoding='utf-8') as handle:
+        json.dump({'generated_at': datetime.now(timezone.utc).isoformat(), 'rejected_inputs': rejected_inputs}, handle, indent=2)
+    return output_path
+
 def write_jsonl_log(records: List[Dict[str, Any]], output_path: Path) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open('w', encoding='utf-8') as handle:

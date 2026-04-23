@@ -4,7 +4,7 @@ Make audio smaller without changing what players hear.
 
 Pressor is a perceptual audio optimization tool designed for game developers, pipelines, and batch processing workflows.
 
-Version: v3.5.3  
+Version: v3.8.0  
 License: MIT
 
 ---
@@ -106,6 +106,39 @@ Each run shows:
 - an optional benchmark summary for measured size reduction  
 
 Outputs are organized into timestamped run folders for easy tracking and comparison.
+
+## Structured Output (New in v3.6.2)
+
+Pressor can optionally organize all inputs into a clearer, pipeline-friendly structure:
+
+```
+python pressor.py --structured-output
+```
+
+This creates:
+
+```
+OutputRoot/
+└── pressor_runs/<timestamp>/
+    ├── encoded/   # successfully processed files
+    ├── skipped/   # inputs intentionally not processed
+    ├── failed/    # files that encountered errors
+    ├── reports/
+    │   └── pressor_run.jsonl
+```
+
+Key behavior:
+
+- disabled by default so existing behavior does not break  
+- preserves original folder structure  
+- skipped and failed files are copied, not moved  
+- does not affect hashing or change detection  
+
+Recommended for pipelines:
+
+```
+python pressor.py --wwise-mode --structured-output
+```
 
 ---
 
@@ -409,3 +442,67 @@ python -m unittest discover -s tests/unit -v
 ## Maintainer
 
 Brannen Graves
+
+
+### Handling Skipped Files
+
+By default, Pressor does not copy skipped files into the output directory.
+
+To include skipped inputs, such as MP3 files when using `--skip-lossy-inputs`, enable structured output:
+
+```
+python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs --structured-output
+```
+
+Important:
+
+- skipped files are copied, not moved  
+- original filenames and folder structure are preserved  
+- this behavior is opt-in so existing workflows do not change  
+
+
+
+## Input Hardening (New in v3.8.0)
+
+Pressor now treats the input folder as an explicit trust boundary. It will never execute files from the input folder, and it will reject clearly unsafe or unsupported files before they reach ffmpeg.
+
+What changed:
+- blocked executable and script-like inputs such as `.exe`, `.bat`, `.cmd`, `.ps1`, `.sh`, and `.js` are rejected
+- common audio formats are accepted by extension
+- unknown extensions are probed with `ffprobe` by default and accepted only when an audio stream is confirmed
+- rejected inputs are written to `reports/pressor_rejected_inputs.json`
+- when `--structured-output` is enabled, rejected source files are copied into `rejected/`
+
+Example pipeline-friendly usage:
+
+```bash
+python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs --structured-output
+```
+
+If you need the older strict extension-only behavior, you can disable probing for unknown extensions:
+
+```bash
+python pressor.py --input INPUT --output OUTPUT --no-input-sniffing
+```
+
+
+## Cleanup and Retention
+
+If you run Pressor frequently in CI or batch pipelines, old timestamped run folders can add up over time. Pressor 3.8.0 adds a safe cleanup command that only manages folders inside `pressor_runs/`.
+
+Examples:
+
+```bash
+python pressor.py cleanup --output OUTPUT --keep-last 50
+python pressor.py cleanup --output OUTPUT --older-than-days 3
+python pressor.py cleanup --output OUTPUT --keep-last 50 --older-than-days 3 --dry-run
+```
+
+What it does:
+- `--keep-last N` keeps the newest N run folders
+- `--older-than-days D` removes runs older than D days
+- `--dry-run` shows what would be deleted without deleting anything
+- `--verbose` prints each deleted run folder
+
+Cleanup only touches `OUTPUT/pressor_runs/` and leaves other output content alone.
+
