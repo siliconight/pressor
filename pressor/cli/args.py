@@ -33,6 +33,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-lossy-inputs", action="store_true", help="Skip files that already appear to be lossy-encoded instead of processing them again.")
     parser.add_argument("--fail-on-lossy-inputs", action="store_true", help="Fail files that already appear to be lossy-encoded instead of processing them again.")
     parser.add_argument("--allow-lossy-inputs", action="store_true", help="Allow already lossy-encoded inputs to be processed intentionally.")
+    parser.add_argument("--convert-lossy-to-ogg", action="store_true", help="Convert already lossy inputs such as MP3, AAC, M4A, Opus, WMA, or Vorbis/OGG into .ogg files. Opt-in utility mode; lossless inputs are skipped.")
+    parser.add_argument("--ogg-bitrate", default="96k", help="Audio bitrate used by --convert-lossy-to-ogg. Default: 96k.")
     parser.add_argument("--manifest", help="Run against an existing manifest JSON.")
     parser.add_argument("--build-manifest", help="Create a manifest JSON and exit.")
     parser.add_argument("--review-pack", help="Optional folder where original and encoded review pairs will be copied side by side.")

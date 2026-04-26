@@ -4,7 +4,7 @@ Make audio smaller without changing what players hear.
 
 Pressor is a perceptual audio optimization tool designed for game development pipelines, CI systems, and large-scale asset processing.
 
-Version: v3.10.6  
+Version: v3.11.0  
 License: MIT
 
 ---

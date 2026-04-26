@@ -79,6 +79,8 @@ def run_encode_job(
     manifest_payload: dict[str, object] | None = None
     if args.skip_lossy_inputs and args.fail_on_lossy_inputs:
         raise EncoderError("Choose either --skip-lossy-inputs or --fail-on-lossy-inputs, not both.")
+    if getattr(args, "convert_lossy_to_ogg", False) and (args.wwise_mode or args.wwise_prep or args.build_manifest or args.manifest or args.changed_only):
+        raise EncoderError("--convert-lossy-to-ogg cannot be combined with Wwise mode, manifests, or changed-only processing.")
     if args.allow_lossy_inputs and (args.skip_lossy_inputs or args.fail_on_lossy_inputs):
         args.skip_lossy_inputs = False
         args.fail_on_lossy_inputs = False
@@ -88,6 +90,10 @@ def run_encode_job(
         print("Wwise preset enabled: Wwise-safe validation and import artifact generation.")
         if not args.changed_only:
             print("Changed-only processing is not forced in Wwise mode. Use --changed-only explicitly when you want incremental behavior.")
+        print("")
+    if getattr(args, "convert_lossy_to_ogg", False):
+        print("Running in lossy-to-OGG conversion mode.")
+        print("Only already-lossy inputs are converted. Lossless inputs are skipped.")
         print("")
     if args.manifest:
         manifest_payload = load_manifest_context(Path(args.manifest))
@@ -227,7 +233,18 @@ def run_encode_job(
         total_files = len(encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)) if input_root is not None else 0
     print_progress_header(total_files)
 
-    if args.wwise_prep:
+    if getattr(args, "convert_lossy_to_ogg", False):
+        results = encoder.convert_lossy_to_ogg(
+            input_root=input_root,
+            output_root=effective_output_root,
+            recursive=recursive,
+            overwrite=args.overwrite,
+            dry_run=args.dry_run,
+            max_workers=args.workers,
+            bitrate=getattr(args, "ogg_bitrate", "96k"),
+            progress_callback=_progress_callback,
+        )
+    elif args.wwise_prep:
         settings = load_wwise_settings()
         if args.wwise_safe or args.wwise_prep:
             validate_wwise_safe_settings(settings)
@@ -344,6 +361,17 @@ def run_encode_job(
     print(f"Failure report: {failure_path}")
     print(f"Structured log: {jsonl_path}")
     print(f"Log file: {log_file}")
+
+    if bool(getattr(args, "convert_lossy_to_ogg", False)):
+        converted = sum(1 for item in results if item.success and item.changed)
+        skipped_non_lossy = sum(1 for item in results if item.success and not item.changed and "non-lossy" in str(item.message).lower())
+        print("")
+        print("Lossy-to-OGG conversion summary")
+        print("")
+        print(f"Converted       : {converted}")
+        print(f"Skipped non-lossy: {skipped_non_lossy}")
+        print(f"Failed          : {failed}")
+        print("")
 
     if bool(getattr(args, "structured_output", False)) and run_root is not None:
         print("")
