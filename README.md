@@ -4,7 +4,7 @@ Make audio smaller without changing what players hear.
 
 Pressor is a perceptual audio optimization tool designed for game development pipelines, CI systems, and large-scale asset processing.
 
-Version: v3.11.0  
+Version: v3.10.8  
 License: MIT
 
 ---
@@ -84,6 +84,18 @@ python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inpu
 
 ```bash
 python pressor.py --input INPUT --output OUTPUT --auto-profile --wwise-mode --wwise-prep
+```
+
+### Lossy to OGG Conversion
+
+```bash
+python pressor.py --input INPUT --output OUTPUT --convert-lossy-to-ogg
+```
+
+Optional bitrate control:
+
+```bash
+python pressor.py --input INPUT --output OUTPUT --convert-lossy-to-ogg --ogg-bitrate 96k
 ```
 
 ### Incremental Processing and Benchmark
@@ -268,6 +280,68 @@ Lossy inputs:
 - are detected automatically
 - are skipped by default
 - can be processed intentionally when required
+
+### Optional: Normalize Lossy Inputs to OGG
+
+Pressor can optionally convert already-lossy inputs (MP3, AAC, M4A, WMA, Opus, etc.) into `.ogg` files.
+
+```bash
+python pressor.py --input INPUT --output OUTPUT --convert-lossy-to-ogg
+```
+
+Behavior:
+
+- opt-in only
+- converts lossy, non-OGG inputs to `.ogg`
+- skips lossless inputs
+- skips existing `.ogg` files
+- preserves source folder structure
+- writes outputs into timestamped run folders
+- uses `libopus` through FFmpeg
+- defaults to `--ogg-bitrate 96k`
+
+This mode is intended for pipeline normalization, not source-quality preservation.
+
+### Example: Converting MP3 to OGG
+
+Input:
+
+```text
+input/
+  dialogue/
+    npc_01.mp3
+    npc_02.mp3
+  music/
+    battle_theme.mp3
+```
+
+Command:
+
+```bash
+python pressor.py --input input --output output --convert-lossy-to-ogg
+```
+
+Output:
+
+```text
+output/pressor_runs/<timestamp>/
+  encoded/
+    dialogue/
+      npc_01.ogg
+      npc_02.ogg
+    music/
+      battle_theme.ogg
+  skipped/
+  failed/
+  reports/
+```
+
+Notes:
+
+- original folder structure is preserved
+- `.mp3` files are converted to `.ogg`
+- output files keep names with `.ogg` extension
+- lossless files are skipped
 
 ---
 
