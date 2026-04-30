@@ -71,18 +71,19 @@ def build_manifest(
     auto_profile: bool,
     strict_routing: bool,
     wwise_prep: bool,
+    forced_container: str | None = None,
 ) -> Path:
     if output_root is None:
         output_root = default_output_root_for_manifest_build(input_root)
     extra = {"mode": "wwise-prep"} if wwise_prep else None
-    forced_container = ".wav" if wwise_prep else None
+    effective_forced_container = ".wav" if wwise_prep else forced_container
     encoder.save_manifest(
         manifest_path,
         input_root,
         output_root,
         default_profile,
         recursive=recursive,
-        forced_container=forced_container,
+        forced_container=effective_forced_container,
         extra=extra,
         auto_profile=auto_profile,
         strict_routing=strict_routing,

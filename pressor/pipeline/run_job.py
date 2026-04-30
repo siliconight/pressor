@@ -81,6 +81,14 @@ def run_encode_job(
         raise EncoderError("Choose either --skip-lossy-inputs or --fail-on-lossy-inputs, not both.")
     if getattr(args, "convert_lossy_to_ogg", False) and (args.wwise_mode or args.wwise_prep or args.build_manifest or args.manifest or args.changed_only):
         raise EncoderError("--convert-lossy-to-ogg cannot be combined with Wwise mode, manifests, or changed-only processing.")
+    output_format = getattr(args, "output_format", "profile")
+    forced_container = None
+    if output_format == "opus":
+        forced_container = ".opus"
+    elif output_format == "ogg":
+        forced_container = ".ogg"
+    if forced_container and (args.wwise_mode or args.wwise_prep or args.convert_lossy_to_ogg):
+        raise EncoderError("--output-format is only supported for normal encoding runs.")
     if args.allow_lossy_inputs and (args.skip_lossy_inputs or args.fail_on_lossy_inputs):
         args.skip_lossy_inputs = False
         args.fail_on_lossy_inputs = False
@@ -90,6 +98,10 @@ def run_encode_job(
         print("Wwise preset enabled: Wwise-safe validation and import artifact generation.")
         if not args.changed_only:
             print("Changed-only processing is not forced in Wwise mode. Use --changed-only explicitly when you want incremental behavior.")
+        print("")
+    if forced_container:
+        print(f"Output format override enabled: {output_format} ({forced_container})")
+        print("Auto-profile still controls tuning, but output container is fixed by the runner/flag.")
         print("")
     if getattr(args, "convert_lossy_to_ogg", False):
         print("Running in lossy-to-OGG conversion mode.")
@@ -180,6 +192,7 @@ def run_encode_job(
             args.auto_profile,
             args.strict_routing,
             args.wwise_prep,
+            forced_container=forced_container,
         )
         print(f"Manifest written: {manifest_path}")
         return 0
@@ -209,6 +222,7 @@ def run_encode_job(
             args.auto_profile,
             args.strict_routing,
             args.wwise_prep,
+            forced_container=forced_container,
         )
         with selected_manifest_path.open("r", encoding="utf-8") as handle:
             selected_manifest_payload = json.load(handle)
@@ -283,6 +297,7 @@ def run_encode_job(
             skip_lossy_inputs=args.skip_lossy_inputs,
             fail_on_lossy_inputs=args.fail_on_lossy_inputs,
             allow_lossy_inputs=args.allow_lossy_inputs,
+            forced_container=forced_container,
             progress_callback=_progress_callback,
         )
 

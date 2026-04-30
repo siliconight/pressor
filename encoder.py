@@ -221,6 +221,21 @@ class AudioBatchEncoder:
             return
         raise EncoderError(f"{label} must not be inside the input folder: {child_resolved}")
 
+
+    @staticmethod
+    def _apply_output_format_profile_override(profile: Dict[str, Any], destination: Path) -> Dict[str, Any]:
+        suffix = destination.suffix.lower()
+        if suffix not in {".opus", ".ogg"}:
+            return profile
+        overridden = dict(profile)
+        overridden["codec"] = "libopus"
+        overridden["container"] = suffix
+        overridden.setdefault("application", "audio")
+        overridden.setdefault("vbr", "on")
+        overridden.setdefault("compression_level", 10)
+        overridden.setdefault("frame_duration", 20)
+        return overridden
+
     def probe(self, path: Path) -> AudioInfo:
         try:
             return probe_audio_file(path, self.ffmpeg.ffprobe, self._validate_input_file)
@@ -332,12 +347,13 @@ class AudioBatchEncoder:
         skip_lossy_inputs: bool = False,
         fail_on_lossy_inputs: bool = False,
         allow_lossy_inputs: bool = False,
+        forced_container: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
     ) -> List[JobResult]:
         if use_manifest:
             items = self._load_manifest(use_manifest)
         else:
-            items = self.build_plan(input_root, output_root, default_profile, recursive, auto_profile=auto_profile, strict_routing=strict_routing)
+            items = self.build_plan(input_root, output_root, default_profile, recursive, forced_container=forced_container, auto_profile=auto_profile, strict_routing=strict_routing)
 
         results: List[JobResult] = []
         worker_count = self._normalize_worker_count(max_workers)
@@ -789,7 +805,7 @@ class AudioBatchEncoder:
             current_hash = self.sha256(source)
             if current_hash != item.input_sha256:
                 return self._error_result(source, None, item, original_size, "Source changed since manifest was generated", stage="plan")
-            profile = self.profiles.get(item.profile)
+            profile = self._apply_output_format_profile_override(self.profiles.get(item.profile), destination)
             destination.parent.mkdir(parents=True, exist_ok=True)
             if destination.exists() and not overwrite:
                 return JobResult(source, destination, item.profile, True, False, original_size, destination.stat().st_size, "Skipped existing", item.profile_source, item.profile_confidence, item.profile_reasons)

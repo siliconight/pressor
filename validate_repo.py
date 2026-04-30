@@ -6,9 +6,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 
 REQUIRED_FILES = [
+    "START_HERE_WINDOWS.bat",
+    "START_HERE.md",
     "setup.bat",
     "run_windows.bat",
     "run_windows_structured.bat",
+    "run_windows_opus.bat",
+    "run_windows_ogg.bat",
     "setup_linux.sh",
     "run_linux.sh",
     "pressor.py",
@@ -19,6 +23,7 @@ REQUIRED_FILES = [
     "pytest.ini",
     "scripts/build_linux.sh",
     "scripts/build_windows.ps1",
+    "docs/FIRST_TIME_USERS.md",
     "docs/REPO_STRUCTURE.md",
 ]
 
@@ -28,9 +33,13 @@ ROOT_BUILD_HELPERS_THAT_SHOULD_NOT_EXIST = [
 ]
 
 README_EXPECTED_TERMS = [
+    "START_HERE_WINDOWS.bat",
     "setup.bat",
     "run_windows.bat",
     "run_windows_structured.bat",
+    "run_windows_opus.bat",
+    "run_windows_ogg.bat",
+    "--output-format",
     "setup_linux.sh",
     "run_linux.sh",
     "python pressor.py --doctor",
@@ -40,6 +49,8 @@ README_EXPECTED_TERMS = [
 WINDOWS_RUNNERS = [
     "run_windows.bat",
     "run_windows_structured.bat",
+    "run_windows_opus.bat",
+    "run_windows_ogg.bat",
 ]
 
 CACHE_DIRS = {
@@ -71,6 +82,12 @@ def main() -> int:
             if term not in readme:
                 issues.append(f"README.md does not mention expected command or script: {term}")
 
+    start_here = ROOT / "START_HERE_WINDOWS.bat"
+    if start_here.exists():
+        content = read_text("START_HERE_WINDOWS.bat")
+        if "setup.bat" not in content:
+            issues.append("START_HERE_WINDOWS.bat does not delegate to setup.bat")
+
     for rel_path in WINDOWS_RUNNERS:
         if not (ROOT / rel_path).exists():
             continue
@@ -79,6 +96,15 @@ def main() -> int:
             issues.append(f"{rel_path} does not reference pressor.py")
         if "--doctor" not in content:
             issues.append(f"{rel_path} does not run --doctor before execution")
+
+    for rel_path, expected_format in {
+        "run_windows_opus.bat": "--output-format opus",
+        "run_windows_ogg.bat": "--output-format ogg",
+    }.items():
+        if (ROOT / rel_path).exists():
+            content = read_text(rel_path)
+            if expected_format not in content:
+                issues.append(f"{rel_path} does not use {expected_format}")
 
     for path in ROOT.rglob("*"):
         rel_parts = path.relative_to(ROOT).parts
