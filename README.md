@@ -2,103 +2,80 @@
 
 Make audio smaller without changing what players hear.
 
-Pressor is a perceptual audio optimization tool for game teams, pipelines, and batch processing workflows.
+Pressor is a perceptual audio optimization tool designed for game development pipelines, CI systems, and large-scale asset processing.
 
 Version: v3.12.1  
 License: MIT
 
 ---
 
-## First-Time Users
+## Why Pressor
 
-### Windows
+Game audio often contains more data than players can perceive.
 
-Start here:
+Pressor reduces that footprint to:
 
-```text
-START_HERE_WINDOWS.bat
-```
+- shrink install sizes  
+- reduce patch sizes  
+- lower bandwidth and CDN costs  
+- speed up downloads and updates  
 
-After setup completes:
+This is not about changing audio.
 
-1. Put audio files in `C:\Pressor\input`
-2. Run `run_windows.bat`
-
-Use `run_windows_structured.bat` when you want pipeline-friendly `encoded/`, `skipped/`, and `failed/` folders.
-
-Use `run_windows_opus.bat` when you want `.opus` outputs.
-
-Use `run_windows_ogg.bat` when you want `.ogg` outputs.
-
-### Linux
-
-Start here:
-
-```bash
-./setup_linux.sh
-```
-
-Then put audio files in `~/Pressor/input` and run:
-
-```bash
-./run_linux.sh
-```
+It is about removing data that does not materially impact the player experience.
 
 ---
 
-## What Pressor Is For
+## What Pressor Demonstrates
 
-Pressor reduces shipped audio size while preserving perceived quality.
+Pressor is built to prove three things in real production pipelines:
 
-It is built for teams that want to:
+- measurable reduction in packaged build size  
+- deterministic behavior suitable for CI and Perforce workflows  
+- clean integration into Wwise with no runtime impact  
 
-- shrink install and patch sizes
-- reduce download and CDN costs
-- batch-process large audio sets safely
-- prepare cleaner upstream inputs for Wwise workflows
+The goal is not compression alone.
 
-The goal is not to improve audio.
-The goal is to remove data that is unlikely to matter perceptually, while keeping the player experience intact.
+The goal is safe, repeatable optimization at scale.
 
 ---
 
-## 2-Minute Success Path
-
-If you want the fastest path to a first successful run, do this.
+## Quick Start
 
 ### Windows
 
-1. Download the release zip and extract it.
-2. Double-click `START_HERE_WINDOWS.bat`.
-3. Put source-quality audio files into:
+1. Download the latest release  
+2. Run `setup.bat`  
+3. Place audio files into:
 
 ```text
 C:\Pressor\input
 ```
 
-4. Double-click `run_windows.bat`.
-5. Open:
+4. Run:
+
+```text
+run_windows.bat
+```
+
+5. Results are written to:
 
 ```text
 C:\Pressor\output
 ```
 
-If you want skipped and failed source files copied into the run folder too, use:
-
-```text
-run_windows_structured.bat
-```
+---
 
 ### Linux
 
-1. Extract or clone Pressor.
+1. Clone the repository  
 2. Run:
 
 ```bash
 ./setup_linux.sh
 ```
 
-3. Put source-quality audio files into:
+3. Place audio files into:
 
 ```text
 ~/Pressor/input
@@ -110,7 +87,7 @@ run_windows_structured.bat
 ./run_linux.sh
 ```
 
-5. Open:
+5. Results are written to:
 
 ```text
 ~/Pressor/output
@@ -122,190 +99,96 @@ run_windows_structured.bat
 
 Use these from the extracted Pressor folder:
 
-- `run_windows.bat` uses profile-defined output behavior
-- `run_windows_structured.bat` uses profile-defined output behavior with `encoded/`, `skipped/`, and `failed/` folders
-- `run_windows_opus.bat` forces `.opus` output
-- `run_windows_ogg.bat` forces `.ogg` output
+- `run_windows.bat` → default behavior (profile-driven)
+- `run_windows_structured.bat` → structured output (`encoded/`, `skipped/`, `failed/`)
+- `run_windows_opus.bat` → forces `.opus` output
+- `run_windows_ogg.bat` → forces `.ogg` output
 
 ---
 
-## Output Format Overrides
+## Commands
 
-By default, Pressor uses the selected profile to decide the output container.
-
-Use `--output-format` when you want a specific output type without editing profile JSON.
-
-Force Opus output:
+### Standard Run
 
 ```bash
-python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs --output-format opus
+python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs
 ```
 
-Force OGG output:
+### Structured Output
 
 ```bash
-python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs --output-format ogg
-```
-
-Behavior:
-
-- `--output-format opus` writes `.opus` outputs
-- `--output-format ogg` writes `.ogg` outputs
-- auto-profile still controls tuning and classification
-- the override only applies to normal encoding runs
-- output format overrides force both codec and container together
-
-Windows shortcuts:
-
-- `run_windows_opus.bat`
-- `run_windows_ogg.bat`
-
----
-
-## Before Your First Real Run
-
-Run this once to confirm the machine is ready:
-
-```bash
-python pressor.py --doctor
-```
-
-You should see:
-
-- Python detected
-- FFmpeg detected
-- FFprobe detected
-- Pressor config files loaded
-- zero failures
-
-If FFmpeg is missing, Pressor will now tell you what to do next instead of failing vaguely.
-
----
-
-## The 4 Commands That Matter Most
-
-These are the commands that should be treated as the stable, everyday Pressor surface area.
-
-### 1. Environment check
-
-```bash
-python pressor.py --doctor
-```
-
-### 2. Safe first run
-
-```bash
-python pressor.py --auto-profile --skip-lossy-inputs --benchmark
-```
-
-### 3. Structured pipeline run
-
-```bash
-python pressor.py --auto-profile --skip-lossy-inputs --structured-output --benchmark
+python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs --structured-output
 ```
 
 ### Force Opus Output
 
 ```bash
-python pressor.py --auto-profile --skip-lossy-inputs --output-format opus --benchmark
+python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs --output-format opus
 ```
 
 ### Force OGG Output
 
 ```bash
-python pressor.py --auto-profile --skip-lossy-inputs --output-format ogg --benchmark
+python pressor.py --input INPUT --output OUTPUT --auto-profile --skip-lossy-inputs --output-format ogg
 ```
 
-### 4. Wwise-oriented run
+### Lossy to OGG Conversion
 
 ```bash
-python pressor.py --input ./AudioRaw --output ./AudioOut --auto-profile --wwise-mode --wwise-prep
+python pressor.py --input INPUT --output OUTPUT --convert-lossy-to-ogg
 ```
 
----
-
-## What the Main Flags Mean
-
-These flags are the intended public contract going into 1.0 positioning.
-
-- `--doctor` checks the environment before a real run
-- `--selftest` validates Pressor on generated sample inputs
-- `--auto-profile` classifies files when no routing rule matches
-- `--skip-lossy-inputs` protects already-lossy sources from being processed again
-- `--structured-output` creates `encoded/`, `skipped/`, `failed/`, and `reports/` inside the run folder
-- `--wwise-mode` enables Wwise-oriented behavior and reporting
-- `--wwise-prep` writes import-oriented Wwise artifacts
-- `--changed-only` processes only files whose source hash or chosen profile changed
-- `--benchmark` prints measured size reduction after the run
-- `--output-format opus|ogg` forces normal encoding runs to produce `.opus` or `.ogg` outputs
-
-Default behavior remains backward-compatible when `--structured-output` is not used.
-
----
-
-## What a Normal Run Looks Like
-
-Each run shows:
-
-- total files detected
-- per-file processing status
-- whether files were encoded, skipped, or failed
-- a final summary with output and report locations
-- an optional benchmark summary for measured size reduction
-
-Outputs are written into timestamped run folders for easy comparison.
-
-With `--structured-output`, a run folder contains:
-
-```text
-encoded/
-skipped/
-failed/
-reports/
-```
-
-Without that flag, default output behavior remains unchanged.
-
----
-
-## FFmpeg Requirements
-
-Pressor requires both `ffmpeg` and `ffprobe`.
-
-### Windows
-
-`setup.bat` will try to help install FFmpeg automatically when possible.
-
-If that does not work:
-
-1. Install FFmpeg
-2. Make sure both `ffmpeg` and `ffprobe` are on `PATH`
-3. Open a new terminal
-4. Run:
+### Validation
 
 ```bash
 python pressor.py --doctor
+python pressor.py --selftest
 ```
 
-### Linux
+---
 
-Install FFmpeg with your package manager, then run:
+## Output Format Overrides
 
-```bash
-python pressor.py --doctor
-```
+By default, Pressor uses profiles to determine output format.
 
-Example:
+Use `--output-format` when you want explicit control.
 
-```bash
-sudo apt install ffmpeg
-```
+- `--output-format opus` → writes `.opus` using `libopus`  
+- `--output-format ogg` → writes `.ogg` using `libopus`  
+
+Behavior:
+
+- output format overrides force both codec and container  
+- auto-profile still controls tuning and classification  
+- default profile behavior remains unchanged  
+
+---
+
+## How It Works
+
+Pressor applies perceptual encoding in a controlled batch workflow:
+
+1. scan input audio  
+2. classify content  
+3. apply encoding strategy  
+4. validate output  
+5. write results and reports  
+
+### Perceptual Encoding
+
+Pressor reduces size by removing data that is unlikely to be perceived.
+
+Examples:
+
+- masked frequencies  
+- low-impact detail in dense material  
+- non-critical audio information  
+
+The goal is reduced size without perceptible loss in gameplay.
 
 ---
 
 ## Wwise Pipeline Usage
-
-Pressor is designed to sit upstream of Wwise and integrate cleanly into existing audio pipelines.
 
 Typical flow:
 
@@ -313,120 +196,110 @@ Typical flow:
 Raw Audio -> Pressor -> Wwise Import -> SoundBank Build
 ```
 
-Pressor does not alter mix, gain structure, authoring intent, or runtime playback behavior.
+Pressor:
 
-Typical Wwise-oriented command:
-
-```bash
-python pressor.py --input ./AudioRaw --output ./AudioOut --auto-profile --wwise-mode --wwise-prep
-```
-
-Typical incremental Wwise-oriented command:
-
-```bash
-python pressor.py --input ./AudioRaw --output ./AudioOut --auto-profile --wwise-mode --wwise-prep --changed-only
-```
-
-Generated Wwise event and object names are derived from the asset's relative path so same-stem files in different folders do not collide during automated import.
+- does not modify mix or gain structure  
+- does not alter runtime playback  
+- keeps Wwise as the source of truth  
 
 ---
 
-## Determinism and Changed-Only Processing
+## Structured Output
 
-When `--changed-only` is enabled:
+```bash
+python pressor.py --structured-output
+```
 
-- only assets whose source hash or selected profile changed are processed
-- unchanged assets are skipped before encoding begins
-- a persistent state manifest is stored in the output root
-- repeated runs avoid unnecessary churn
+Creates:
 
-This is intended to reduce rebuild noise and keep version control diffs clean.
+```text
+pressor_runs/<timestamp>/
+  encoded/
+  skipped/
+  failed/
+  reports/
+```
+
+Behavior:
+
+- preserves folder structure  
+- skipped and failed files are copied  
+- designed for pipeline handoff  
 
 ---
 
-## Repository Hygiene and Release Packaging
+## Lossy Input Handling
 
-Pressor is intended to ship as a clean release, not a snapshot of a developer workspace.
+Pressor is intended for source-quality audio (WAV, FLAC).
 
-- generated logs, temp files, reports, caches, and local workspaces are ignored
-- the release builder excludes those artifacts while preserving scripts, tests, docs, and pipeline assets
-- packaged releases include a `RELEASE_MANIFEST_SHA256.txt` file for traceability
+Lossy inputs:
 
-To build a deterministic release zip from the repo root, run:
+- are detected automatically  
+- are skipped by default  
+- can be processed intentionally  
+
+### Normalize Lossy Inputs
 
 ```bash
-python build_release.py
+python pressor.py --convert-lossy-to-ogg
+```
+
+Behavior:
+
+- converts lossy formats (MP3, AAC, etc.) to `.ogg`  
+- skips lossless inputs  
+- preserves folder structure  
+
+---
+
+## Output Artifacts
+
+Each run produces:
+
+- `pressor_report.csv`  
+- `pressor_failures.json`  
+- `pressor_run.jsonl`  
+
+Optional outputs include manifests and Wwise import data.
+
+---
+
+## Dependencies
+
+Pressor installs required dependencies during setup.
+
+- Python  
+- FFmpeg  
+
+If setup completes successfully, no additional steps are required.
+
+Manual installation is supported for advanced environments.
+
+---
+
+## Security
+
+Pressor runs locally and does not transmit data externally.
+
+- uses FFmpeg for encoding  
+- operates within configured input/output directories  
+- does not modify source files  
+
+Dependencies are installed using trusted package sources (WinGet) or user-provided binaries.
+
+Best practices:
+
+- use trusted source audio  
+- review setup scripts before execution  
+
+---
+
+## Testing
+
+```bash
+pytest
 ```
 
 ---
 
-## Validation Commands
-
-From the release root:
-
-```bash
-pytest -q
-python pressor.py --doctor
-python pressor.py --selftest
-```
-
----
-
-## Security Note
-
-Use trusted, source-quality audio files when possible. Avoid processing untrusted media from unknown sources.
-
-
-## Windows dependency bootstrap
-
-Run `START_HERE_WINDOWS.bat` first.
-
-On Windows, setup checks for:
-- Python 3.10 or newer
-- pip
-- Pressor Python dependencies
-- FFmpeg
-- FFprobe
-
-If Python is missing, setup can install Python 3.12 through WinGet.
-
-If FFmpeg or FFprobe are missing, setup can install FFmpeg through WinGet using the `Gyan.FFmpeg` package.
-
-After installing Python or FFmpeg, Windows may not refresh PATH inside the same Command Prompt. If setup tells you to reopen the terminal, close the window, open a new Command Prompt, and run `setup.bat` again.
-
-
-## Windows launcher behavior
-
-`run_windows.bat` and `run_windows_structured.bat` use the default workspace explicitly:
-
-- Input: `C:\Pressor\input`
-- Output: `C:\Pressor\output`
-
-Before running, the launcher checks whether supported audio files are present in the input folder.
-If none are found, it opens the input folder and stops with a clear message.
-
-
-## Dependency Installation & Security
-
-Pressor installs required dependencies using **WinGet (Windows Package Manager)** when you approve it during setup.
-
-This includes:
-- Python (Python.Python.3.12)
-- FFmpeg (Gyan.FFmpeg)
-
-Why this approach:
-- Uses Microsoft's official package manager (WinGet)
-- Installs from known package IDs, not arbitrary URLs
-- Does not bundle third-party binaries directly in Pressor
-- Prompts before installing anything on your system
-
-What this means:
-- You are trusting the WinGet package source and maintainers
-- This is standard practice for developer tooling on Windows
-
-If you prefer:
-- You can decline automatic installation
-- Install Python manually from https://www.python.org/
-- Install FFmpeg manually and ensure `ffmpeg` and `ffprobe` are on PATH
-
-Pressor will work the same either way.
+Pressor is designed to be simple to run, predictable in behavior, and safe to integrate into production pipelines.
