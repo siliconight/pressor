@@ -437,10 +437,11 @@ class AudioBatchEncoder:
         return sorted(results, key=lambda item: str(item.source))
 
 
-    def convert_lossy_to_ogg(
+    def format_conversion(
         self,
         input_root: Path,
         output_root: Path,
+        target_format: str = "ogg",
         recursive: bool = True,
         overwrite: bool = False,
         dry_run: bool = False,
@@ -448,24 +449,29 @@ class AudioBatchEncoder:
         bitrate: str = "96k",
         progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
     ) -> List[JobResult]:
+        target_format = str(target_format).lower().strip()
+        if target_format not in {"ogg", "opus"}:
+            raise EncoderError("--target-format must be ogg or opus.")
+
         input_root = input_root.resolve()
         output_root = output_root.resolve()
         self._validate_directory(input_root, must_exist=True)
         self._ensure_not_nested(input_root, output_root, "Output folder")
 
+        target_suffix = f".{target_format}"
         source_files = list(self._iter_audio_files(input_root, recursive))
         items: list[JobPlanItem] = []
         seen_destinations: set[str] = set()
 
         for source in source_files:
             rel = source.resolve().relative_to(input_root)
-            destination_rel = rel.with_suffix(".ogg")
+            destination_rel = rel.with_suffix(target_suffix)
             destination = output_root / destination_rel
 
             destination_key = str(destination.resolve()).casefold()
             if destination_key in seen_destinations:
                 suffix = source.suffix.lower().lstrip(".") or "source"
-                destination_rel = rel.with_name(f"{rel.stem}_{suffix}.ogg")
+                destination_rel = rel.with_name(f"{rel.stem}_{suffix}{target_suffix}")
                 destination = output_root / destination_rel
                 destination_key = str(destination.resolve()).casefold()
 
@@ -473,13 +479,13 @@ class AudioBatchEncoder:
             items.append(JobPlanItem(
                 source=str(source),
                 relative_path=rel.as_posix(),
-                profile="lossy-to-ogg",
+                profile=f"format-conversion-{target_format}",
                 destination=str(destination),
                 input_sha256=self.sha256(source),
                 source_size=source.stat().st_size,
-                profile_source="convert-lossy-to-ogg",
+                profile_source="format-conversion",
                 profile_confidence=100,
-                profile_reasons=["explicit lossy-to-ogg conversion mode"],
+                profile_reasons=[f"explicit format conversion mode to {target_suffix}"],
             ))
 
         results: list[JobResult] = []
@@ -487,11 +493,12 @@ class AudioBatchEncoder:
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             future_to_item = {
                 executor.submit(
-                    self._convert_lossy_to_ogg_item,
+                    self._format_conversion_item,
                     item,
                     overwrite,
                     dry_run,
                     bitrate,
+                    target_format,
                 ): item
                 for item in items
             }
@@ -507,12 +514,36 @@ class AudioBatchEncoder:
 
         return sorted(results, key=lambda item: str(item.source))
 
-    def _convert_lossy_to_ogg_item(
+    def convert_lossy_to_ogg(
+        self,
+        input_root: Path,
+        output_root: Path,
+        recursive: bool = True,
+        overwrite: bool = False,
+        dry_run: bool = False,
+        max_workers: int = 2,
+        bitrate: str = "96k",
+        progress_callback: Optional[Callable[[int, int, JobPlanItem, JobResult], None]] = None,
+    ) -> List[JobResult]:
+        return self.format_conversion(
+            input_root=input_root,
+            output_root=output_root,
+            target_format="ogg",
+            recursive=recursive,
+            overwrite=overwrite,
+            dry_run=dry_run,
+            max_workers=max_workers,
+            bitrate=bitrate,
+            progress_callback=progress_callback,
+        )
+
+    def _format_conversion_item(
         self,
         item: JobPlanItem,
         overwrite: bool,
         dry_run: bool,
         bitrate: str,
+        target_format: str = "ogg",
     ) -> JobResult:
         source = Path(item.source)
         destination = Path(item.destination)
@@ -528,24 +559,12 @@ class AudioBatchEncoder:
 
             info = self.probe(source)
             input_is_lossy, input_lossy_reason = self.inspect_input_lossiness(source, info)
-            if not input_is_lossy:
-                return JobResult(
-                    source,
-                    None,
-                    item.profile,
-                    True,
-                    False,
-                    original_size,
-                    original_size,
-                    "Skipped non-lossy input",
-                    item.profile_source,
-                    item.profile_confidence,
-                    item.profile_reasons,
-                    input_is_lossy=False,
-                    input_lossy_reason=input_lossy_reason,
-                )
+            target_format = str(target_format).lower().strip()
+            if target_format not in {"ogg", "opus"}:
+                return self._error_result(source, None, item, original_size, "Unsupported target format", stage="format_conversion", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason)
 
-            if source.suffix.lower() == ".ogg":
+            target_suffix = f".{target_format}"
+            if source.suffix.lower() == target_suffix:
                 return JobResult(
                     source,
                     None,
@@ -554,11 +573,11 @@ class AudioBatchEncoder:
                     False,
                     original_size,
                     original_size,
-                    "Skipped existing .ogg input",
+                    f"Skipped existing {target_suffix} input",
                     item.profile_source,
                     item.profile_confidence,
                     item.profile_reasons,
-                    input_is_lossy=True,
+                    input_is_lossy=input_is_lossy,
                     input_lossy_reason=input_lossy_reason,
                 )
 
@@ -572,11 +591,11 @@ class AudioBatchEncoder:
                     False,
                     original_size,
                     destination.stat().st_size,
-                    "Skipped existing .ogg output",
+                    f"Skipped existing {target_suffix} output",
                     item.profile_source,
                     item.profile_confidence,
                     item.profile_reasons,
-                    input_is_lossy=True,
+                    input_is_lossy=input_is_lossy,
                     input_lossy_reason=input_lossy_reason,
                 )
 
@@ -593,7 +612,7 @@ class AudioBatchEncoder:
                 "-map_metadata", "0",
                 "-c:a", "libopus",
                 "-b:a", str(bitrate),
-                "-f", "ogg",
+                "-f", target_format,
                 str(temp_output),
             ]
 
@@ -611,7 +630,7 @@ class AudioBatchEncoder:
                     item.profile_confidence,
                     item.profile_reasons,
                     applied_bitrate=str(bitrate),
-                    input_is_lossy=True,
+                    input_is_lossy=input_is_lossy,
                     input_lossy_reason=input_lossy_reason,
                     command=self._command_text(cmd),
                 )
@@ -620,14 +639,14 @@ class AudioBatchEncoder:
                 result = run_external(cmd, timeout=DEFAULT_FFMPEG_TIMEOUT, text=True)
             except subprocess.TimeoutExpired:
                 temp_output.unlink(missing_ok=True)
-                return self._error_result(source, destination, item, original_size, "ffmpeg timed out", stage="convert_lossy_to_ogg", input_is_lossy=True, input_lossy_reason=input_lossy_reason, command=cmd)
+                return self._error_result(source, destination, item, original_size, "ffmpeg timed out", stage="format_conversion", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
 
             if result.returncode != 0:
                 temp_output.unlink(missing_ok=True)
-                return self._error_result(source, destination, item, original_size, result.stderr.strip() or "ffmpeg failed", stage="convert_lossy_to_ogg", input_is_lossy=True, input_lossy_reason=input_lossy_reason, command=cmd, ffmpeg_exit_code=result.returncode, stderr=result.stderr)
+                return self._error_result(source, destination, item, original_size, result.stderr.strip() or "ffmpeg failed", stage="format_conversion", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd, ffmpeg_exit_code=result.returncode, stderr=result.stderr)
 
             if not temp_output.exists():
-                return self._error_result(source, destination, item, original_size, "Temp output was not created", stage="verify", input_is_lossy=True, input_lossy_reason=input_lossy_reason, command=cmd)
+                return self._error_result(source, destination, item, original_size, "Temp output was not created", stage="verify", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
 
             temp_output.replace(destination)
             output_size = destination.stat().st_size
@@ -639,18 +658,27 @@ class AudioBatchEncoder:
                 True,
                 original_size,
                 output_size,
-                f"Converted lossy input to .ogg | {input_lossy_reason}",
+                f"Converted input to {target_suffix} | {input_lossy_reason}",
                 item.profile_source,
                 item.profile_confidence,
                 item.profile_reasons,
                 applied_bitrate=str(bitrate),
-                input_is_lossy=True,
+                input_is_lossy=input_is_lossy,
                 input_lossy_reason=input_lossy_reason,
                 command=self._command_text(cmd),
             )
         except Exception as exc:
-            LOGGER.exception("Failed to convert lossy input %s", source)
-            return self._error_result(source, None, item, original_size, str(exc), stage="convert_lossy_to_ogg")
+            LOGGER.exception("Failed to convert input %s", source)
+            return self._error_result(source, None, item, original_size, str(exc), stage="format_conversion")
+
+    def _convert_lossy_to_ogg_item(
+        self,
+        item: JobPlanItem,
+        overwrite: bool,
+        dry_run: bool,
+        bitrate: str,
+    ) -> JobResult:
+        return self._format_conversion_item(item, overwrite, dry_run, bitrate, "ogg")
 
     def scan(
         self,

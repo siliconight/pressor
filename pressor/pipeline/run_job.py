@@ -79,15 +79,21 @@ def run_encode_job(
     manifest_payload: dict[str, object] | None = None
     if args.skip_lossy_inputs and args.fail_on_lossy_inputs:
         raise EncoderError("Choose either --skip-lossy-inputs or --fail-on-lossy-inputs, not both.")
-    if getattr(args, "convert_lossy_to_ogg", False) and (args.wwise_mode or args.wwise_prep or args.build_manifest or args.manifest or args.changed_only):
-        raise EncoderError("--convert-lossy-to-ogg cannot be combined with Wwise mode, manifests, or changed-only processing.")
+    legacy_lossy_to_ogg = bool(getattr(args, "convert_lossy_to_ogg", False))
+    if legacy_lossy_to_ogg:
+        args.format_conversion = True
+        args.target_format = "ogg"
+        if getattr(args, "ogg_bitrate", None):
+            args.conversion_bitrate = args.ogg_bitrate
+    if getattr(args, "format_conversion", False) and (args.wwise_mode or args.wwise_prep or args.build_manifest or args.manifest or args.changed_only):
+        raise EncoderError("--format-conversion cannot be combined with Wwise mode, manifests, or changed-only processing.")
     output_format = getattr(args, "output_format", "profile")
     forced_container = None
     if output_format == "opus":
         forced_container = ".opus"
     elif output_format == "ogg":
         forced_container = ".ogg"
-    if forced_container and (args.wwise_mode or args.wwise_prep or args.convert_lossy_to_ogg):
+    if forced_container and (args.wwise_mode or args.wwise_prep or getattr(args, "format_conversion", False)):
         raise EncoderError("--output-format is only supported for normal encoding runs.")
     if args.allow_lossy_inputs and (args.skip_lossy_inputs or args.fail_on_lossy_inputs):
         args.skip_lossy_inputs = False
@@ -103,9 +109,9 @@ def run_encode_job(
         print(f"Output format override enabled: {output_format} ({forced_container})")
         print("Auto-profile still controls tuning, but output container is fixed by the runner/flag.")
         print("")
-    if getattr(args, "convert_lossy_to_ogg", False):
-        print("Running in lossy-to-OGG conversion mode.")
-        print("Only already-lossy inputs are converted. Lossless inputs are skipped.")
+    if getattr(args, "format_conversion", False):
+        print(f"Running in Format Conversion Mode: {args.target_format}.")
+        print("Pressor will convert supported audio inputs without applying the optimization pipeline.")
         print("")
     if args.manifest:
         manifest_payload = load_manifest_context(Path(args.manifest))
@@ -247,15 +253,16 @@ def run_encode_job(
         total_files = len(encoder.scan(input_root, args.profile, recursive=recursive, auto_profile=args.auto_profile)) if input_root is not None else 0
     print_progress_header(total_files)
 
-    if getattr(args, "convert_lossy_to_ogg", False):
-        results = encoder.convert_lossy_to_ogg(
+    if getattr(args, "format_conversion", False):
+        results = encoder.format_conversion(
             input_root=input_root,
             output_root=effective_output_root,
+            target_format=getattr(args, "target_format", "ogg"),
             recursive=recursive,
             overwrite=args.overwrite,
             dry_run=args.dry_run,
             max_workers=args.workers,
-            bitrate=getattr(args, "ogg_bitrate", "96k"),
+            bitrate=getattr(args, "conversion_bitrate", "96k"),
             progress_callback=_progress_callback,
         )
     elif args.wwise_prep:
@@ -357,6 +364,8 @@ def run_encode_job(
         "skip_lossy_inputs": bool(args.skip_lossy_inputs),
         "fail_on_lossy_inputs": bool(args.fail_on_lossy_inputs),
         "dry_run": bool(args.dry_run),
+        "format_conversion": bool(getattr(args, "format_conversion", False)),
+        "target_format": getattr(args, "target_format", None),
     }
     jsonl_path = write_jsonl_log(build_run_records(results, run_context), reports_root / "pressor_run.jsonl")
     succeeded = sum(1 for item in results if item.success and (item.changed or not str(item.message).lower().startswith("skipped")))
@@ -377,14 +386,14 @@ def run_encode_job(
     print(f"Structured log: {jsonl_path}")
     print(f"Log file: {log_file}")
 
-    if bool(getattr(args, "convert_lossy_to_ogg", False)):
+    if bool(getattr(args, "format_conversion", False)):
         converted = sum(1 for item in results if item.success and item.changed)
-        skipped_non_lossy = sum(1 for item in results if item.success and not item.changed and "non-lossy" in str(item.message).lower())
+        skipped_existing = sum(1 for item in results if item.success and not item.changed and "skip" in str(item.message).lower())
         print("")
-        print("Lossy-to-OGG conversion summary")
+        print("Format Conversion Mode summary")
         print("")
         print(f"Converted       : {converted}")
-        print(f"Skipped non-lossy: {skipped_non_lossy}")
+        print(f"Skipped         : {skipped_existing}")
         print(f"Failed          : {failed}")
         print("")
 
