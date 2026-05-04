@@ -31,12 +31,33 @@ class PerceptualTests(unittest.TestCase):
     def test_recommend_bitrate_stays_within_profile_bounds(self):
         info = AudioInfo(Path('line.wav'), 1, 48000, 2.0, None)
         preview = AudioPreview(1, 48000, 2.0, 0.25, 0.1, 0.06, 0.08, 0.20, 2.7)
-        bitrate, sample_rate, channels = recommend_bitrate('dialogue', self.profile, info, preview)
+        bitrate, sample_rate, channels = recommend_bitrate('sfx', self.profile, info, preview)
         self.assertRegex(bitrate, r'^\d+k$')
         value = int(bitrate[:-1])
         self.assertGreaterEqual(value, 16)
         self.assertLessEqual(value, 32)
         self.assertEqual(sample_rate, 48000)
+        self.assertEqual(channels, 1)
+
+
+    def test_dialogue_profile_enforces_quality_floor(self):
+        profile = {
+            'bitrate_mono': '28k',
+            'bitrate_stereo': '40k',
+            'adaptive_bitrate_mono_min': '24k',
+            'adaptive_bitrate_mono_max': '36k',
+            'adaptive_bitrate_stereo_min': '32k',
+            'adaptive_bitrate_stereo_max': '48k',
+            'sample_rate': 24000,
+            'max_channels': 1,
+        }
+        info = AudioInfo(Path('dialogue.wav'), 1, 48000, 1.5, None)
+        preview = AudioPreview(1, 48000, 1.5, 0.66, 0.03, 0.02, 0.11, 0.19, 1.1)
+
+        bitrate, sample_rate, channels = recommend_bitrate('dialogue', profile, info, preview)
+
+        self.assertGreaterEqual(int(bitrate[:-1]), 160)
+        self.assertGreaterEqual(sample_rate, 48000)
         self.assertEqual(channels, 1)
 
     def test_recommend_encode_plan_returns_stable_contract(self):

@@ -24,3 +24,8 @@ For pipeline-style output, use `run_windows_structured.bat`.
 1. Run `./setup_linux.sh`.
 2. Put files in `~/Pressor/input`.
 3. Run `./run_linux.sh`.
+
+
+## Dialogue-safe tuning
+
+Dialogue now preserves a 48 kHz sample rate and a minimum 160k bitrate floor. SFX tuning remains unchanged.

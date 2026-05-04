@@ -12,6 +12,17 @@ class RoutingTests(unittest.TestCase):
         self.assertTrue(matches_route_rule('Some/VO/line.wav', rule))
         self.assertFalse(matches_route_rule('Music/theme.wav', rule))
 
+
+    def test_lowercase_content_folders_match_routes(self):
+        rules = [
+            RouteRule(pattern='dialogue/**', profile='dialogue'),
+            RouteRule(pattern='sfx/**', profile='sfx'),
+            RouteRule(pattern='music/**', profile='music'),
+        ]
+        self.assertEqual(resolve_profile_from_route('dialogue/line.wav', rules, {'dialogue', 'sfx', 'music'}).profile, 'dialogue')
+        self.assertEqual(resolve_profile_from_route('nested/sfx/hit.wav', rules, {'dialogue', 'sfx', 'music'}).profile, 'sfx')
+        self.assertEqual(resolve_profile_from_route('music/theme.wav', rules, {'dialogue', 'sfx', 'music'}).profile, 'music')
+
     def test_resolve_profile_from_route_skips_unknown_profiles(self):
         rules = [
             RouteRule(pattern='VO/**', profile='unknown'),
