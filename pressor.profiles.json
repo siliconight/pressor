@@ -2,18 +2,18 @@
   "dialogue": {
     "codec": "libopus",
     "container": ".opus",
-    "bitrate_mono": "28k",
-    "bitrate_stereo": "40k",
-    "sample_rate": 24000,
-    "max_channels": 1,
-    "application": "voip",
+    "bitrate_mono": "192k",
+    "bitrate_stereo": "192k",
+    "sample_rate": 48000,
+    "max_channels": 2,
+    "application": "audio",
     "vbr": "on",
     "compression_level": 10,
     "frame_duration": 20,
-    "adaptive_bitrate_mono_min": "24k",
-    "adaptive_bitrate_mono_max": "36k",
-    "adaptive_bitrate_stereo_min": "32k",
-    "adaptive_bitrate_stereo_max": "48k"
+    "adaptive_bitrate_mono_min": "160k",
+    "adaptive_bitrate_mono_max": "224k",
+    "adaptive_bitrate_stereo_min": "192k",
+    "adaptive_bitrate_stereo_max": "224k"
   },
   "ambient": {
     "codec": "libopus",

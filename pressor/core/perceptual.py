@@ -52,14 +52,15 @@ def compute_perceptual_risk(profile_name: str, info: AudioInfo, preview: AudioPr
         reasons.append(reason)
 
     if profile_name == "dialogue":
+        push(18, "dialogue profile protects speech clarity by default")
         if preview.silence_ratio >= 0.20:
-            push(-10, "pause-heavy speech can tolerate lower bitrate")
+            push(4, "pause-heavy speech still keeps dialogue-safe floor")
         if 0.03 <= preview.zcr <= 0.12:
-            push(-4, "speech-like harmonic content")
+            push(8, "speech-like harmonic content needs protection")
         if preview.brightness >= 0.18:
-            push(10, "bright consonants need protection")
+            push(12, "bright consonants need high-frequency protection")
         if preview.transient_density >= 2.6:
-            push(8, "sharp plosives/transients present")
+            push(10, "sharp plosives/transients present")
         if info.channels > 1:
             push(6, "multichannel source preserved conservatively")
     elif profile_name == "ambient":
@@ -121,6 +122,13 @@ def recommend_bitrate(profile_name: str, profile: Dict[str, Any], info: AudioInf
         chosen_k = min(max_k, max(base_k, int(round((base_k + max_k) / 2))))
     else:
         chosen_k = max(min_k, base_k if profile_name == "music" else int(round((min_k + base_k) / 2)))
+
+    if profile_name == "dialogue":
+        # Dialogue is intentionally protected from aggressive speech-style compression.
+        # Low complexity, silence, or speech-like detection must never push voice content
+        # below the player-transparent floor established for game dialogue.
+        chosen_k = max(chosen_k, 160)
+        sample_rate = max(sample_rate, 48000)
 
     return _format_kbps(chosen_k), sample_rate, channels
 
