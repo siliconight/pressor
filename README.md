@@ -1,10 +1,21 @@
+
+<p align="center">
+  <img src="assets/pressor_logo.png" width="260">
+</p>
+
+<h1 align="center">Pressor</h1>
+
+<p align="center">
+Batch Audio Compression for Game Development Pipelines
+</p>
+
 # Pressor
 
 Make audio smaller without changing what players hear.
 
 Pressor is a perceptual audio optimization tool for game teams, pipelines, and batch processing workflows.
 
-Version: v3.13.5  
+Version: v3.13.6  
 License: MIT
 
 ---
@@ -527,19 +538,7 @@ If you prefer:
 Pressor will work the same either way.
 
 
-
-## 3.13.4
+## 3.13.6
 
 - Fixed `.ogg` output to use `libvorbis` instead of `libopus` for improved Godot and engine compatibility.
 - `.opus` output continues to use `libopus`.
-
-## Godot OGG Vorbis compatibility
-
-Pressor treats `--output-format ogg` as Ogg Vorbis. The generated `.ogg` files use `libvorbis` and are verified with `ffprobe` before being finalized. Use `--output-format opus` when you specifically want Opus output.
-
-To verify generated OGG files manually:
-
-```bash
-python verify_ogg_vorbis.py C:\Pressor\output
-```
-(Fix OGG output to use Vorbis for Godot compatibility)
