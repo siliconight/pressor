@@ -44,8 +44,9 @@ def test_format_conversion_dry_run_builds_ogg_command_for_mp3_input(tmp_path: Pa
     assert result.success is True
     assert result.changed is False
     assert result.destination == output / "voice.ogg"
-    assert "-c:a libopus" in result.message
-    assert "-b:a 96k" in result.message
+    assert "-c:a libvorbis" in result.message
+    assert "-q:a 5" in result.message
+    assert "-b:a 96k" not in result.message
     assert "-f ogg" in result.message
 
 

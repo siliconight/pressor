@@ -53,17 +53,27 @@ def build_ffmpeg_command(
         "-c:a", codec,
         "-ac", str(channels),
         "-ar", str(sample_rate),
-        "-b:a", bitrate,
     ]
-    if codec == "libopus":
+
+    if codec == "libvorbis":
+        # .ogg means Ogg Vorbis for game-engine compatibility, especially Godot.
+        # Use quality mode and force the Ogg muxer so we never write Opus audio
+        # into an .ogg-named output.
+        cmd.extend(["-q:a", str(profile.get("quality", 5)), "-f", "ogg"])
+    elif codec == "libopus":
         cmd.extend([
+            "-b:a", bitrate,
             "-application", str(profile.get("application", "audio")),
             "-vbr", str(profile.get("vbr", "on")),
             "-compression_level", str(profile.get("compression_level", 10)),
             "-frame_duration", str(profile.get("frame_duration", 20)),
+            "-f", "opus",
         ])
     elif codec == "aac":
-        cmd.extend(["-movflags", "+faststart"])
+        cmd.extend(["-b:a", bitrate, "-movflags", "+faststart"])
+    else:
+        cmd.extend(["-b:a", bitrate])
+
     cmd.append(str(temp_output))
     return cmd, temp_output
 

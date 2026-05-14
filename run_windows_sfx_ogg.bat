@@ -74,7 +74,7 @@ if %ERRORLEVEL% neq 0 (
 echo.
 echo Starting Pressor SFX OGG encode run...
 echo.
-%PYTHON% pressor.py --input "%INPUTDIR%" --output "%OUTPUTDIR%" --auto-profile --skip-lossy-inputs --output-format ogg --benchmark
+%PYTHON% pressor.py --input "%INPUTDIR%" --output "%OUTPUTDIR%" --auto-profile --skip-lossy-inputs --output-format ogg --benchmark --overwrite
 set "EXITCODE=%ERRORLEVEL%"
 
 echo.
@@ -87,6 +87,8 @@ if %EXITCODE% neq 0 (
 )
 
 echo Pressor SFX OGG run completed successfully.
+echo Verifying generated .ogg files are Vorbis encoded...
+%PYTHON% verify_ogg_vorbis.py "%OUTPUTDIR%"
 echo Check C:\Pressor\output for the latest timestamped run folder.
 echo.
 pause

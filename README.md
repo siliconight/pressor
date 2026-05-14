@@ -4,7 +4,7 @@ Make audio smaller without changing what players hear.
 
 Pressor is a perceptual audio optimization tool for game teams, pipelines, and batch processing workflows.
 
-Version: v3.13.3  
+Version: v3.13.5  
 License: MIT
 
 ---
@@ -525,3 +525,14 @@ If you prefer:
 - Install FFmpeg manually and ensure `ffmpeg` and `ffprobe` are on PATH
 
 Pressor will work the same either way.
+
+
+## Godot OGG Vorbis compatibility
+
+Pressor treats `--output-format ogg` as Ogg Vorbis. The generated `.ogg` files use `libvorbis` and are verified with `ffprobe` before being finalized. Use `--output-format opus` when you specifically want Opus output.
+
+To verify generated OGG files manually:
+
+```bash
+python verify_ogg_vorbis.py C:\Pressor\output
+```

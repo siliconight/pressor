@@ -44,7 +44,7 @@ def _is_within(parent: Path, child: Path) -> bool:
 ALLOWED_INPUT_EXTENSIONS = {
     ".wav", ".mp3", ".flac", ".ogg", ".opus", ".m4a", ".aac", ".aif", ".aiff", ".wma"
 }
-ALLOWED_CODECS = {"libopus", "aac"}
+ALLOWED_CODECS = {"libopus", "libvorbis", "aac"}
 ALLOWED_CONTAINERS = {".opus", ".ogg", ".m4a", ".aac"}
 LOGGER = logging.getLogger("pressor")
 
@@ -222,18 +222,47 @@ class AudioBatchEncoder:
         raise EncoderError(f"{label} must not be inside the input folder: {child_resolved}")
 
 
+    def _verify_output_codec(self, path: Path) -> tuple[bool, str]:
+        """Verify output codec for explicit engine-facing extensions."""
+        suffix = path.suffix.lower()
+        expected = {".ogg": "vorbis", ".opus": "opus"}.get(suffix)
+        if not expected:
+            return True, ""
+
+        try:
+            result = run_external([
+                self.ffmpeg.ffprobe,
+                "-v", "error",
+                "-select_streams", "a:0",
+                "-show_entries", "stream=codec_name",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                str(path),
+            ], timeout=DEFAULT_FFMPEG_TIMEOUT, text=True)
+        except Exception as exc:
+            return False, f"Could not verify output codec for {path.name}: {exc}"
+
+        actual = (result.stdout or "").strip().splitlines()[0].strip().lower() if result.stdout else ""
+        if result.returncode != 0 or actual != expected:
+            detail = (result.stderr or "").strip()
+            return False, f"Output codec verification failed for {path.name}: expected {expected}, found {actual or 'unknown'}. {detail}".strip()
+        return True, f"Verified output codec: {actual}"
+
     @staticmethod
     def _apply_output_format_profile_override(profile: Dict[str, Any], destination: Path) -> Dict[str, Any]:
         suffix = destination.suffix.lower()
         if suffix not in {".opus", ".ogg"}:
             return profile
         overridden = dict(profile)
-        overridden["codec"] = "libopus"
         overridden["container"] = suffix
-        overridden.setdefault("application", "audio")
-        overridden.setdefault("vbr", "on")
-        overridden.setdefault("compression_level", 10)
-        overridden.setdefault("frame_duration", 20)
+        if suffix == ".ogg":
+            overridden["codec"] = "libvorbis"
+            overridden["quality"] = overridden.get("quality", 5)
+        elif suffix == ".opus":
+            overridden["codec"] = "libopus"
+            overridden.setdefault("application", "audio")
+            overridden.setdefault("vbr", "on")
+            overridden.setdefault("compression_level", 10)
+            overridden.setdefault("frame_duration", 20)
         return overridden
 
     def probe(self, path: Path) -> AudioInfo:
@@ -601,6 +630,7 @@ class AudioBatchEncoder:
 
             temp_output = destination.with_suffix(destination.suffix + ".tmp")
             temp_output.unlink(missing_ok=True)
+            codec = "libvorbis" if target_format == "ogg" else "libopus"
             cmd = [
                 self.ffmpeg.ffmpeg,
                 "-hide_banner",
@@ -610,11 +640,13 @@ class AudioBatchEncoder:
                 "-i", str(source),
                 "-vn",
                 "-map_metadata", "0",
-                "-c:a", "libopus",
-                "-b:a", str(bitrate),
-                "-f", target_format,
-                str(temp_output),
+                "-c:a", codec,
             ]
+            if target_format == "ogg":
+                cmd.extend(["-q:a", "5", "-f", "ogg"])
+            else:
+                cmd.extend(["-b:a", str(bitrate), "-f", "opus"])
+            cmd.append(str(temp_output))
 
             if dry_run:
                 return JobResult(
@@ -647,6 +679,11 @@ class AudioBatchEncoder:
 
             if not temp_output.exists():
                 return self._error_result(source, destination, item, original_size, "Temp output was not created", stage="verify", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
+
+            verified, verify_message = self._verify_output_codec(temp_output)
+            if not verified:
+                temp_output.unlink(missing_ok=True)
+                return self._error_result(source, destination, item, original_size, verify_message, stage="verify", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
 
             temp_output.replace(destination)
             output_size = destination.stat().st_size
@@ -865,6 +902,11 @@ class AudioBatchEncoder:
             if not temp_output.exists():
                 return self._error_result(source, destination, item, original_size, "Temp output was not created", stage="verify", perceptual_risk=tuning.risk, perceptual_score=tuning.score, applied_bitrate=tuning.bitrate, applied_sample_rate=tuning.sample_rate, applied_channels=tuning.channels, input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
 
+            verified, verify_message = self._verify_output_codec(temp_output)
+            if not verified:
+                temp_output.unlink(missing_ok=True)
+                return self._error_result(source, destination, item, original_size, verify_message, stage="verify", perceptual_risk=tuning.risk, perceptual_score=tuning.score, applied_bitrate=tuning.bitrate, applied_sample_rate=tuning.sample_rate, applied_channels=tuning.channels, input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
+
             output_size = temp_output.stat().st_size
             if skip_if_larger and output_size >= original_size:
                 temp_output.unlink(missing_ok=True)
@@ -934,6 +976,11 @@ class AudioBatchEncoder:
                 return self._error_result(source, destination, item, original_size, result.stderr.strip() or "ffmpeg failed", stage="wwise_prep", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd, ffmpeg_exit_code=result.returncode, stderr=result.stderr)
             if not temp_output.exists():
                 return self._error_result(source, destination, item, original_size, "Temp output was not created", stage="verify", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
+            verified, verify_message = self._verify_output_codec(temp_output)
+            if not verified:
+                temp_output.unlink(missing_ok=True)
+                return self._error_result(source, destination, item, original_size, verify_message, stage="verify", input_is_lossy=input_is_lossy, input_lossy_reason=input_lossy_reason, command=cmd)
+
             output_size = temp_output.stat().st_size
             temp_output.replace(destination)
             message = "Prepared for Wwise"
