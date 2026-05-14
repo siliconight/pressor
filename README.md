@@ -525,3 +525,9 @@ If you prefer:
 - Install FFmpeg manually and ensure `ffmpeg` and `ffprobe` are on PATH
 
 Pressor will work the same either way.
+
+
+## 3.13.4
+
+- Fixed `.ogg` output to use `libvorbis` instead of `libopus` for improved Godot and engine compatibility.
+- `.opus` output continues to use `libopus`.

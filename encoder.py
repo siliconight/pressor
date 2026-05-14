@@ -44,7 +44,7 @@ def _is_within(parent: Path, child: Path) -> bool:
 ALLOWED_INPUT_EXTENSIONS = {
     ".wav", ".mp3", ".flac", ".ogg", ".opus", ".m4a", ".aac", ".aif", ".aiff", ".wma"
 }
-ALLOWED_CODECS = {"libopus", "aac"}
+ALLOWED_CODECS = {"libopus", "libvorbis", "aac"}
 ALLOWED_CONTAINERS = {".opus", ".ogg", ".m4a", ".aac"}
 LOGGER = logging.getLogger("pressor")
 
@@ -228,12 +228,17 @@ class AudioBatchEncoder:
         if suffix not in {".opus", ".ogg"}:
             return profile
         overridden = dict(profile)
-        overridden["codec"] = "libopus"
         overridden["container"] = suffix
-        overridden.setdefault("application", "audio")
-        overridden.setdefault("vbr", "on")
-        overridden.setdefault("compression_level", 10)
-        overridden.setdefault("frame_duration", 20)
+
+        if suffix == ".ogg":
+            overridden["codec"] = "libvorbis"
+        elif suffix == ".opus":
+            overridden["codec"] = "libopus"
+            overridden.setdefault("application", "audio")
+            overridden.setdefault("vbr", "on")
+            overridden.setdefault("compression_level", 10)
+            overridden.setdefault("frame_duration", 20)
+
         return overridden
 
     def probe(self, path: Path) -> AudioInfo:
@@ -610,7 +615,7 @@ class AudioBatchEncoder:
                 "-i", str(source),
                 "-vn",
                 "-map_metadata", "0",
-                "-c:a", "libopus",
+                "-c:a", "libvorbis" if target_format == "ogg" else "libopus",
                 "-b:a", str(bitrate),
                 "-f", target_format,
                 str(temp_output),
