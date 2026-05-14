@@ -3,11 +3,6 @@
   <img src="assets/pressor_logo.png" width="260">
 </p>
 
-<h1 align="center">Pressor</h1>
-
-<p align="center">
-Batch Audio Compression for Game Development Pipelines
-</p>
 
 # Pressor
 
