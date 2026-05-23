@@ -16,7 +16,7 @@ C:\Pressor\input
 C:\Pressor\output
 ```
 
-If you want skipped and failed source files copied into the run folder too, use `run_windows_structured.bat`.
+If you want skipped and failed source files copied into the run folder too, use `launchers/run_windows_structured.bat`.
 
 ---
 

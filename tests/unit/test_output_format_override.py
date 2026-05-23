@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from encoder import AudioBatchEncoder, ProfileStore, RuleStore
+from pressor.legacy_encoder import AudioBatchEncoder, ProfileStore, RuleStore
 
 
 class DummyLocator:

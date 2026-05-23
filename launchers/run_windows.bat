@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 echo.
 echo ==========================================
-echo Pressor Structured Run
+echo Pressor Run
 echo ==========================================
 echo.
 
@@ -55,7 +55,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo Checking for supported audio files...
-%PYTHON% -c "from pathlib import Path; from encoder import ALLOWED_INPUT_EXTENSIONS; import sys; root=Path(r'%INPUTDIR%'); files=[p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in ALLOWED_INPUT_EXTENSIONS]; print(f'Found {len(files)} supported audio file(s).'); sys.exit(0 if files else 3)"
+%PYTHON% -c "from pathlib import Path; from pressor.legacy_encoder import ALLOWED_INPUT_EXTENSIONS; import sys; root=Path(r'%INPUTDIR%'); files=[p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in ALLOWED_INPUT_EXTENSIONS]; print(f'Found {len(files)} supported audio file(s).'); sys.exit(0 if files else 3)"
 if %ERRORLEVEL% neq 0 (
     echo.
     echo No supported audio files were found in:
@@ -68,21 +68,21 @@ if %ERRORLEVEL% neq 0 (
 )
 
 echo.
-echo Starting Pressor structured encode run...
+echo Starting Pressor encode run...
 echo.
-%PYTHON% pressor.py --input "%INPUTDIR%" --output "%OUTPUTDIR%" --auto-profile --skip-lossy-inputs --structured-output --benchmark
+%PYTHON% pressor.py --input "%INPUTDIR%" --output "%OUTPUTDIR%" --auto-profile --skip-lossy-inputs --benchmark
 set "EXITCODE=%ERRORLEVEL%"
 
 echo.
 if %EXITCODE% neq 0 (
-    echo Pressor structured run did not complete successfully.
+    echo Pressor run did not complete successfully.
     echo Check the terminal output and reports in the latest run folder.
     echo.
     pause
     exit /b %EXITCODE%
 )
 
-echo Pressor structured run completed successfully.
+echo Pressor run completed successfully.
 echo Check C:\Pressor\output for the latest timestamped run folder.
 echo.
 pause

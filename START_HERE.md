@@ -1,5 +1,18 @@
 # Start Here
 
+For the normal Windows OGG workflow:
+
+1. Double-click `setup.bat` once.
+2. Put source-quality audio in `C:\Pressor\input`.
+3. Double-click `run_windows_ogg.bat`.
+4. Get results from `C:\Pressor\output`.
+
+Advanced launchers live in `launchers/`. Internal support files live in `support/`, `tools/`, and `docs/`.
+
+---
+
+# Start Here
+
 This file is for first-time users.
 
 ## Windows
@@ -9,14 +22,14 @@ This file is for first-time users.
 3. Put audio files in `C:\Pressor\input`.
 4. Double-click `run_windows.bat`.
 
-For pipeline-style output, use `run_windows_structured.bat`.
+For pipeline-style output, use `launchers/run_windows_structured.bat`.
 
 ## What Each File Is For
 
 - `START_HERE_WINDOWS.bat` starts first-time setup.
 - `setup.bat` installs/checks dependencies and creates the workspace.
 - `run_windows.bat` runs the normal Pressor batch process.
-- `run_windows_structured.bat` runs Pressor with encoded/skipped/failed folders.
+- `launchers/run_windows_structured.bat` runs Pressor with encoded/skipped/failed folders.
 - `README.md` contains full usage details.
 
 ## Linux

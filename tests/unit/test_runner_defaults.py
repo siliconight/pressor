@@ -4,7 +4,7 @@ from pathlib import Path
 
 class RunnerDefaultsTests(unittest.TestCase):
     def test_windows_runner_skips_lossy_inputs(self):
-        content = Path("run_windows.bat").read_text(encoding="utf-8")
+        content = Path("launchers/run_windows.bat").read_text(encoding="utf-8")
         self.assertIn("--skip-lossy-inputs", content)
         self.assertNotIn("powershell -ExecutionPolicy Bypass", content)
 

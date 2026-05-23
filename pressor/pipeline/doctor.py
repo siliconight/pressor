@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Callable
 
-from encoder import ALLOWED_INPUT_EXTENSIONS, AudioBatchEncoder, EncoderError, FFmpegLocator, ProfileStore, RuleStore
+from pressor.legacy_encoder import ALLOWED_INPUT_EXTENSIONS, AudioBatchEncoder, EncoderError, FFmpegLocator, ProfileStore, RuleStore
 from pressor.core.audio_probe import assess_input_lossiness
 from pressor.core.config import load_profiles_config, load_routing_config, load_wwise_config, validate_config_bundle
 from pressor.core.paths import find_supported_audio_files, normalize_path, validate_path_relationships

@@ -30,7 +30,7 @@ run_windows.bat
 For pipeline-friendly output folders, run:
 
 ```text
-run_windows_structured.bat
+launchers/run_windows_structured.bat
 ```
 
 ## Linux

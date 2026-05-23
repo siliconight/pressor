@@ -7,8 +7,8 @@ from pathlib import Path
 import shutil
 import zipfile
 
-ROOT = Path(__file__).resolve().parent
-VERSION_FILE = ROOT / "VERSION.txt"
+ROOT = Path(__file__).resolve().parents[1]
+VERSION_FILE = ROOT / "support" / "VERSION.txt"
 DIST_DIR = ROOT / "dist"
 STAGING_DIR = DIST_DIR / "_staging"
 

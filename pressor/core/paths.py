@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable, Sequence
 import re
 
-from encoder import ALLOWED_INPUT_EXTENSIONS, EncoderError
+from pressor.legacy_encoder import ALLOWED_INPUT_EXTENSIONS, EncoderError
 
 
 @dataclass(frozen=True)

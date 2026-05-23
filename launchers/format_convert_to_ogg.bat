@@ -57,7 +57,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo Checking for supported audio files...
-%PYTHON% -c "from pathlib import Path; from encoder import ALLOWED_INPUT_EXTENSIONS; import sys; root=Path(r'%INPUTDIR%'); files=[p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in ALLOWED_INPUT_EXTENSIONS]; print(f'Found {len(files)} supported audio file(s).'); sys.exit(0 if files else 3)"
+%PYTHON% -c "from pathlib import Path; from pressor.legacy_encoder import ALLOWED_INPUT_EXTENSIONS; import sys; root=Path(r'%INPUTDIR%'); files=[p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in ALLOWED_INPUT_EXTENSIONS]; print(f'Found {len(files)} supported audio file(s).'); sys.exit(0 if files else 3)"
 if %ERRORLEVEL% neq 0 (
     echo.
     echo No supported audio files were found in:

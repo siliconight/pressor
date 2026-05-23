@@ -10,7 +10,7 @@ Make audio smaller without changing what players hear.
 
 Pressor is a perceptual audio optimization tool for game teams, pipelines, and batch processing workflows.
 
-Version: v3.13.6  
+Version: v3.14.1  
 License: MIT
 
 ---
@@ -28,17 +28,17 @@ START_HERE_WINDOWS.bat
 After setup completes:
 
 1. Put audio files in `C:\Pressor\input`
-2. Run `run_windows.bat`
+2. Run `launchers/run_windows.bat`
 
-Use `run_windows_structured.bat` when you want pipeline-friendly `encoded/`, `skipped/`, and `failed/` folders.
+Use `launchers/run_windows_structured.bat` when you want pipeline-friendly `encoded/`, `skipped/`, and `failed/` folders.
 
-Use `run_windows_opus.bat` when you want Pressor-optimized `.opus` outputs.
+Use `launchers/run_windows_opus.bat` when you want Pressor-optimized `.opus` outputs.
 
 Use `run_windows_ogg.bat` when you want Pressor-optimized `.ogg` outputs.
 
-Use `run_windows_sfx_ogg.bat` when you want to run the current SFX tuning path into `.ogg` outputs from `C:\Pressor\input\sfx`.
+Use `launchers/run_windows_sfx_ogg.bat` when you want to run the current SFX tuning path into `.ogg` outputs from `C:\Pressor\input\sfx`.
 
-Use `format_convert_to_opus.bat` or `format_convert_to_ogg.bat` when you only want to convert formats without applying Pressor's optimization pipeline.
+Use `launchers/format_convert_to_opus.bat` or `launchers/format_convert_to_ogg.bat` when you only want to convert formats without applying Pressor's optimization pipeline.
 
 ### Linux
 
@@ -86,7 +86,7 @@ If you want the fastest path to a first successful run, do this.
 C:\Pressor\input
 ```
 
-4. Double-click `run_windows.bat`.
+4. Double-click `launchers/run_windows.bat`.
 5. Open:
 
 ```text
@@ -96,7 +96,7 @@ C:\Pressor\output
 If you want skipped and failed source files copied into the run folder too, use:
 
 ```text
-run_windows_structured.bat
+launchers/run_windows_structured.bat
 ```
 
 ### Linux
@@ -132,13 +132,13 @@ run_windows_structured.bat
 
 Use these from the extracted Pressor folder:
 
-- `run_windows.bat` uses profile-defined output behavior
-- `run_windows_structured.bat` uses profile-defined output behavior with `encoded/`, `skipped/`, and `failed/` folders
-- `run_windows_opus.bat` forces optimized `.opus` output
+- `launchers/run_windows.bat` uses profile-defined output behavior
+- `launchers/run_windows_structured.bat` uses profile-defined output behavior with `encoded/`, `skipped/`, and `failed/` folders
+- `launchers/run_windows_opus.bat` forces optimized `.opus` output
 - `run_windows_ogg.bat` forces optimized `.ogg` output
-- `run_windows_sfx_ogg.bat` runs SFX-only optimized `.ogg` output from `C:\Pressor\input\sfx` to the normal `C:\Pressor\output` run root
-- `format_convert_to_opus.bat` converts supported inputs to `.opus` without the optimization pipeline
-- `format_convert_to_ogg.bat` converts supported inputs to `.ogg` without the optimization pipeline
+- `launchers/run_windows_sfx_ogg.bat` runs SFX-only optimized `.ogg` output from `C:\Pressor\input\sfx` to the normal `C:\Pressor\output` run root
+- `launchers/format_convert_to_opus.bat` converts supported inputs to `.opus` without the optimization pipeline
+- `launchers/format_convert_to_ogg.bat` converts supported inputs to `.ogg` without the optimization pipeline
 
 ---
 
@@ -146,7 +146,7 @@ Use these from the extracted Pressor folder:
 
 ## SFX OGG Runner
 
-Use `run_windows_sfx_ogg.bat` when you want to process only SFX assets through the current Pressor tuning path and force `.ogg` output.
+Use `launchers/run_windows_sfx_ogg.bat` when you want to process only SFX assets through the current Pressor tuning path and force `.ogg` output.
 
 Expected folder layout:
 
@@ -213,8 +213,8 @@ python pressor.py --input INPUT --output OUTPUT --format-conversion --target-for
 
 Windows shortcuts:
 
-- `format_convert_to_ogg.bat`
-- `format_convert_to_opus.bat`
+- `launchers/format_convert_to_ogg.bat`
+- `launchers/format_convert_to_opus.bat`
 
 Behavior:
 
@@ -256,9 +256,9 @@ Behavior:
 
 Windows shortcuts:
 
-- `run_windows_opus.bat`
+- `launchers/run_windows_opus.bat`
 - `run_windows_ogg.bat`
-- `run_windows_sfx_ogg.bat`
+- `launchers/run_windows_sfx_ogg.bat`
 
 ---
 
@@ -456,7 +456,7 @@ Pressor is intended to ship as a clean release, not a snapshot of a developer wo
 To build a deterministic release zip from the repo root, run:
 
 ```bash
-python build_release.py
+python tools/build_release.py
 ```
 
 ---
@@ -498,7 +498,7 @@ After installing Python or FFmpeg, Windows may not refresh PATH inside the same 
 
 ## Windows launcher behavior
 
-`run_windows.bat` and `run_windows_structured.bat` use the default workspace explicitly:
+`launchers/run_windows.bat` and `launchers/run_windows_structured.bat` use the default workspace explicitly:
 
 - Input: `C:\Pressor\input`
 - Output: `C:\Pressor\output`
@@ -533,7 +533,15 @@ If you prefer:
 Pressor will work the same either way.
 
 
-## 3.13.6
+## 3.14.1
 
 - Fixed `.ogg` output to use `libvorbis` instead of `libopus` for improved Godot and engine compatibility.
 - `.opus` output continues to use `libopus`.
+
+
+## Repository layout note
+
+The root is intentionally kept focused on the normal user path. Advanced launchers live in `launchers/`; support files live in `support/`; build and validation helpers live in `tools/`.
+
+
+Advanced Linux launcher: `launchers/run_linux.sh`

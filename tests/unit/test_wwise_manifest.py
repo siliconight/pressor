@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from encoder import AudioBatchEncoder, FFmpegLocator, ProfileStore, RuleStore
+from pressor.legacy_encoder import AudioBatchEncoder, FFmpegLocator, ProfileStore, RuleStore
 from pressor.pipeline.manifest import build_wwise_manifest, sanitize_wwise_name
 
 

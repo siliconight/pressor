@@ -12,7 +12,8 @@ function Require-Command([string]$Name) {
 
 Require-Command py
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$ProjectRoot = Split-Path -Parent $ScriptRoot
 Set-Location $ProjectRoot
 
 $VenvPath = Join-Path $ProjectRoot '.venv-build'
@@ -27,8 +28,8 @@ if (-not (Test-Path $PythonExe)) {
 
 & $PythonExe -m pip install --upgrade pip
 & $PythonExe -m pip install pyinstaller
-if (Test-Path requirements.txt) {
-    & $PythonExe -m pip install -r requirements.txt
+if (Test-Path support\requirements.txt) {
+    & $PythonExe -m pip install -r support\requirements.txt
 }
 
 $Args = @(
@@ -37,9 +38,9 @@ $Args = @(
     '--clean',
     '--onefile',
     '--name', 'pressor',
-    '--add-data', 'pressor.profiles.json;.',
-    '--add-data', 'pressor.routing.json;.',
-    '--add-data', 'pressor.wwise.json;.',
+    '--add-data', 'config/pressor.profiles.json;config',
+    '--add-data', 'config/pressor.routing.json;config',
+    '--add-data', 'config/pressor.wwise.json;config',
     '--add-data', 'assets;assets',
     '--icon', 'assets/pressor.ico'
 )

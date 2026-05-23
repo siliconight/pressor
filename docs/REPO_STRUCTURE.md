@@ -1,131 +1,27 @@
 # Pressor Repository Structure
 
-This document describes the current repository layout and identifies stable entrypoints that should not be moved or renamed casually.
+Pressor keeps the root directory focused on the files most users need.
 
-The goal is to prevent accidental breakage during future refactors, cleanup passes, or release packaging changes.
+## User-facing root files
 
----
+- `START_HERE_WINDOWS.bat` starts first-time Windows setup.
+- `setup.bat` prepares the Windows machine.
+- `run_windows_ogg.bat` runs the common Godot-friendly Ogg Vorbis workflow.
+- `run_windows.bat`, `launchers/run_windows_opus.bat`, `launchers/run_windows_structured.bat`, and `launchers/run_windows_sfx_ogg.bat` remain available for alternate workflows.
+- `pressor.py` is the stable CLI entry point.
+- `README.md`, `START_HERE.md`, `VERSION.txt`, and `LICENSE` describe the project and release.
 
-## Root Directory
+## Main folders
 
-User-facing entrypoints. Do not move or rename these without updating README commands, setup flows, release packaging, and validation checks in the same change.
+- `assets/` contains Pressor branding and icon assets.
+- `config/` contains Pressor profile, routing, and Wwise JSON configuration.
+- `docs/` contains deeper setup and pipeline documentation.
+- `pressor/` contains the application code.
+- `scripts/` contains platform build and install helpers.
+- `teamcity/` contains CI examples.
+- `tests/` contains regression and smoke tests.
+- `tools/` contains repo validation, release packaging, and developer utilities.
 
-- `setup.bat`
-- `run_windows.bat`
-- `run_windows_structured.bat`
-- `setup_linux.sh`
-- `run_linux.sh`
+## Compatibility
 
-Core execution:
-
-- `pressor.py` is the primary CLI entrypoint.
-
-Release and packaging:
-
-- `build_release.py` builds the release package.
-
-Project metadata:
-
-- `README.md`
-- `VERSION.txt`
-- `requirements.txt`
-- `pytest.ini`
-- `LICENSE`
-
----
-
-## `pressor/`
-
-Primary application package.
-
-This is where package-level modules, version metadata, CLI helpers, pipeline logic, workspace support, and reporting code should continue to consolidate over time.
-
----
-
-## `scripts/`
-
-Helper scripts that are not the primary user-facing entrypoints.
-
-This is the preferred home for build helpers, installer helpers, and platform-specific utilities that are useful for maintainers but are not the first thing users should run.
-
-Current examples:
-
-- `scripts/build_linux.sh`
-- `scripts/build_windows.ps1`
-- `scripts/install_linux.sh`
-- `scripts/install_windows.ps1`
-- `scripts/run_linux.sh`
-
----
-
-## `docs/`
-
-Supporting documentation beyond the main README.
-
-Use this folder for setup details, CI notes, TeamCity guidance, repo structure notes, and future operational documentation.
-
----
-
-## `tests/`
-
-Automated tests for CLI behavior, pipeline behavior, structured output, manifests, security checks, routing, profiles, and other core behaviors.
-
-Tests should protect user-facing behavior before cleanup or refactor work happens.
-
----
-
-## `teamcity/`
-
-TeamCity-oriented CI helper scripts.
-
-These should remain separate from user-facing local setup and run scripts.
-
----
-
-## Stability Rules
-
-Before moving or renaming any file, check whether it is referenced by:
-
-- `setup.bat`
-- `run_windows.bat`
-- `run_windows_structured.bat`
-- `setup_linux.sh`
-- `run_linux.sh`
-- `build_release.py`
-- `README.md`
-- `docs/`
-- `teamcity/`
-- tests
-
-If a file is referenced, update all references in the same change and run validation before packaging.
-
----
-
-## Hygiene Rules
-
-Safe cleanup should be incremental.
-
-Prefer:
-
-- documenting structure before moving files
-- moving only non-user-facing helper files first
-- validating setup and run scripts after changes
-- keeping release packages deterministic
-
-Avoid:
-
-- moving root entrypoints without a compatibility plan
-- changing setup behavior during repo cleanup
-- changing run behavior during repo cleanup
-- mixing refactors with dependency bootstrap changes
-
----
-
-## Future Direction
-
-Potential future cleanup, after validation coverage is in place:
-
-- gradually move implementation-only modules from the root into `pressor/`
-- keep root user entrypoints stable
-- keep build-only scripts under `scripts/`
-- expand validation around release package contents
+The root still includes wrapper files for important commands so existing habits and automation do not have to change immediately.
