@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from pressor.core.paths import create_run_workspace, find_supported_audio_files, validate_path_relationships
-from encoder import EncoderError
+from pressor.legacy_encoder import EncoderError
 
 
 class PathsTests(unittest.TestCase):

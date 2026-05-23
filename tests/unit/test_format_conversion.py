@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-from encoder import AudioBatchEncoder, JobPlanItem
+from pressor.legacy_encoder import AudioBatchEncoder, JobPlanItem
 
 
 class DummyEncoder(AudioBatchEncoder):

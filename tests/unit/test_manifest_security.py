@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from encoder import AudioBatchEncoder, EncoderError, FFmpegLocator, ProfileStore, RuleStore
+from pressor.legacy_encoder import AudioBatchEncoder, EncoderError, FFmpegLocator, ProfileStore, RuleStore
 
 
 class ManifestContainmentTests(unittest.TestCase):

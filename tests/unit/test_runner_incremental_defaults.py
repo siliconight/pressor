@@ -4,7 +4,7 @@ from pathlib import Path
 
 class RunnerIncrementalDefaultsTests(unittest.TestCase):
     def test_windows_runner_does_not_force_changed_only(self):
-        content = Path("run_windows.bat").read_text(encoding="utf-8")
+        content = Path("launchers/run_windows.bat").read_text(encoding="utf-8")
         self.assertNotIn("--changed-only", content)
         self.assertIn("--skip-lossy-inputs", content)
 

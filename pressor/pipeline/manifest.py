@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Dict
 
-from encoder import AudioBatchEncoder, EncoderError
+from pressor.legacy_encoder import AudioBatchEncoder, EncoderError
 from pressor.core.config import load_wwise_config
 from pressor.core.paths import default_output_root_for_manifest_build
 

@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
-from encoder import EncoderError
+from pressor.legacy_encoder import EncoderError
 
 
 def default_workspace_root() -> Path:

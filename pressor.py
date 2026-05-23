@@ -18,7 +18,7 @@ from typing import Any, Dict, List
 from pressor.cli.main import main as cli_main
 from pressor.core.subprocess_utils import DEFAULT_FFPROBE_TIMEOUT, run_external
 
-from encoder import ALLOWED_INPUT_EXTENSIONS, AudioBatchEncoder, EncoderError, FFmpegLocator, JobResult, ProfileStore, RouteRule, RuleStore
+from pressor.legacy_encoder import ALLOWED_INPUT_EXTENSIONS, AudioBatchEncoder, EncoderError, FFmpegLocator, JobResult, ProfileStore, RouteRule, RuleStore
 from pressor.core.config import (
     get_app_dir,
     get_profile_file,

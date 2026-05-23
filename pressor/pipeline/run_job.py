@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 import platform
 
-from encoder import EncoderError
+from pressor.legacy_encoder import EncoderError
 from pressor.pipeline.manifest import (
     build_manifest,
     build_wwise_manifest,

@@ -8,7 +8,7 @@ import wave
 from pathlib import Path
 from typing import List
 
-from encoder import AudioBatchEncoder
+from pressor.legacy_encoder import AudioBatchEncoder
 
 
 def _write_wav(path: Path, samples: List[float] | List[tuple[float, float]], sample_rate: int = 24000, channels: int = 1) -> None:

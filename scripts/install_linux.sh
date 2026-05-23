@@ -95,9 +95,9 @@ fi
 echo "Python found: $PYTHON_CMD"
 "$PYTHON_CMD" --version
 
-REQ_FILE="$REPO_ROOT/requirements.txt"
+REQ_FILE="$REPO_ROOT/support/support/requirements.txt"
 if [[ ! -f "$REQ_FILE" ]]; then
-  echo "ERROR: requirements.txt not found in $REPO_ROOT"
+  echo "ERROR: support/requirements.txt not found in $REPO_ROOT"
   exit 1
 fi
 

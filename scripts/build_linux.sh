@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -17,8 +17,8 @@ fi
 source "$VENV_PATH/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install pyinstaller
-if [[ -f requirements.txt ]]; then
-  python -m pip install -r requirements.txt
+if [[ -f support/requirements.txt ]]; then
+  python -m pip install -r support/requirements.txt
 fi
 
 python -m PyInstaller \
@@ -26,9 +26,9 @@ python -m PyInstaller \
   --clean \
   --onefile \
   --name pressor \
-  --add-data "pressor.profiles.json:." \
-  --add-data "pressor.routing.json:." \
-  --add-data "pressor.wwise.json:." \
+  --add-data "config/pressor.profiles.json:config" \
+  --add-data "config/pressor.routing.json:config" \
+  --add-data "config/pressor.wwise.json:config" \
   --add-data "assets:assets" \
   pressor.py
 

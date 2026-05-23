@@ -5,26 +5,34 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
-from encoder import EncoderError, ProfileStore, RouteRule, RuleStore
+from pressor.legacy_encoder import EncoderError, ProfileStore, RouteRule, RuleStore
 
 
 def get_app_dir() -> Path:
     return Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
 
 
+def _config_path(root: Path, filename: str) -> Path:
+    """Return the preferred config path, with legacy root-file fallback."""
+    preferred = root / "config" / filename
+    if preferred.exists():
+        return preferred
+    return root / filename
+
+
 def get_profile_file(app_dir: Path | None = None) -> Path:
     root = app_dir or get_app_dir()
-    return root / "pressor.profiles.json"
+    return _config_path(root, "pressor.profiles.json")
 
 
 def get_rule_file(app_dir: Path | None = None) -> Path:
     root = app_dir or get_app_dir()
-    return root / "pressor.routing.json"
+    return _config_path(root, "pressor.routing.json")
 
 
 def get_wwise_file(app_dir: Path | None = None) -> Path:
     root = app_dir or get_app_dir()
-    return root / "pressor.wwise.json"
+    return _config_path(root, "pressor.wwise.json")
 
 
 def load_profiles_config(path: Path | None = None) -> Dict[str, Dict[str, Any]]:

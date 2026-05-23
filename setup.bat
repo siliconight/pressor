@@ -69,7 +69,7 @@ echo.
 echo Installing Pressor Python dependencies...
 echo This can take a minute on first run.
 echo.
-%PYTHON% -m pip install -r requirements.txt
+%PYTHON% -m pip install -r support\requirements.txt
 if errorlevel 1 (
     echo.
     echo ERROR: Failed to install Pressor Python dependencies.

@@ -91,7 +91,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-$requirementsPath = Join-Path $RepoRoot "requirements.txt"
+$requirementsPath = Join-Path $RepoRoot "support\requirements.txt"
 if (-not (Test-Path $requirementsPath)) {
     Write-Host "ERROR: requirements.txt not found in: $RepoRoot"
     exit 1
