@@ -12,6 +12,7 @@ Pressor is a perceptual audio optimization tool for game teams, pipelines, and b
 
 Version: v3.14.1  
 License: Apache 2.0
+![CodeQL](https://github.com/siliconight/pressor/actions/workflows/codeql.yml/badge.svg)
 ---
 
 ## First-Time Users
